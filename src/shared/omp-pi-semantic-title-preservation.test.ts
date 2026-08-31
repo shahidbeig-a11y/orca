@@ -270,5 +270,8 @@ describe('latent hazards the reviewers flagged', () => {
     const once = normalizeCompatibleAgentTitleForOwner(title, 'omp')
     expect(normalizeCompatibleAgentTitleForOwner(once, 'omp')).toBe(once)
     expect(once).toContain('OMP')
+    if (title.includes('Run a long task')) {
+      expect(once).toContain('Run a long task')
+    }
   })
 })
