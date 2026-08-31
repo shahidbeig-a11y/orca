@@ -71,6 +71,10 @@ export function getAgentLabel(title: string): string | null {
   if (piCompatibleSyntheticAgentLabel) {
     return piCompatibleSyntheticAgentLabel
   }
+  // Why: owner rewrite turns `π : <label>` into `OMP : <label>`; only the OMP form is new (#17690).
+  if (/^\s*OMP\s+:(?=\s|$)/u.test(title)) {
+    return 'OMP'
+  }
   if (isPiAgentTitle(title)) {
     return 'Pi'
   }

@@ -9,7 +9,9 @@ const LEGACY_PI_COMPATIBLE_TITLE_RE = /^\s*(?:[\u2800-\u28ff]\s+)?π(?:\s*[-:]|\
 // may already have been swapped for the owner's label, so accept those too — but only in their
 // exact profile casing, since a lowercase `pi - refactor…` is ordinary prose, not a Pi title.
 // The separator must be delimited (`:` attached, or spaced) or `omp-harness` reads as a state.
-const PI_COMPATIBLE_SEPARATOR_RE = /^\s*(?:π|Pi|OMP)(?::|\s+([!>-]))(?=\s|$)/u
+// Why: OMP 17.2.12+ emits `π : <label>` on WSL/ConPTY; owner rewrite swaps the brand to
+// `OMP : <label>`, so the spaced colon must classify as working here too (#17690).
+const PI_COMPATIBLE_SEPARATOR_RE = /^\s*(?:π|Pi|OMP)(?::|\s+([!>:-]))(?=\s|$)/u
 const PI_COMPATIBLE_PERMISSION_TAIL_RE = /\baction required\b/i
 
 function containsBrailleSpinner(title: string): boolean {
@@ -86,5 +88,11 @@ export function getPiCompatibleTitleSeparatorStatus(
   if (PI_COMPATIBLE_PERMISSION_TAIL_RE.test(title)) {
     return 'permission'
   }
-  return match[1] === '!' ? 'permission' : 'idle'
+  if (match[1] === '!') {
+    return 'permission'
+  }
+  if (match[1] === ':') {
+    return 'working'
+  }
+  return 'idle'
 }
