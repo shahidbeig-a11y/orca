@@ -10,6 +10,8 @@ import { getWrapperTitleSegments } from './terminal-title-wrapper-segments'
 
 /** The π brand a Pi/OMP title leads with; the owner's label replaces it in place. */
 const LEGACY_PI_BRAND = 'π'
+// Why: owner rewrite already swapped π; re-running must swap Pi/OMP in place, not collapse (#17690).
+const PI_COMPATIBLE_SPACED_COLON_TITLE_RE = /^\s*(?:Pi|OMP)\s+:(?=\s|$)/u
 
 type TitleProfileMatch = {
   profile: SyntheticAgentTitleProfile
@@ -167,6 +169,11 @@ export function normalizeCompatibleAgentTitleForOwner(
     // scoping is only as good as the segment match — a prefix that itself parses as a π title
     // makes the whole string the match, and then the prefix's brand is what gets swapped.
     const ownedSegment = source.sourceTitle.replace(LEGACY_PI_BRAND, ownerProfile.workingLabel)
+    const segmentAt = title.lastIndexOf(source.sourceTitle)
+    return segmentAt === -1 ? ownedSegment : title.slice(0, segmentAt) + ownedSegment
+  }
+  if (PI_COMPATIBLE_SPACED_COLON_TITLE_RE.test(source.sourceTitle)) {
+    const ownedSegment = source.sourceTitle.replace(/^\s*(?:Pi|OMP)/u, ownerProfile.workingLabel)
     const segmentAt = title.lastIndexOf(source.sourceTitle)
     return segmentAt === -1 ? ownedSegment : title.slice(0, segmentAt) + ownedSegment
   }

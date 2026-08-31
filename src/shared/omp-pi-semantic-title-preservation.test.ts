@@ -263,6 +263,8 @@ describe('latent hazards the reviewers flagged', () => {
     'π - fixing the sidebar - orca',
     'π ! fixing the sidebar',
     'π ⠙ fixing the sidebar',
+    'π : Run a long task',
+    'OMP : Run a long task',
     'zsh | ⠙ π - a - b'
   ])('is a fixed point when the owner rewrite re-runs on %s', (title) => {
     const once = normalizeCompatibleAgentTitleForOwner(title, 'omp')
