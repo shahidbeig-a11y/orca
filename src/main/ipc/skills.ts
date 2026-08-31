@@ -6,6 +6,7 @@ import {
   type SkillDiscoveryResult,
   type SkillDiscoveryTarget
 } from '../../shared/skills'
+import type { ClaudeSlashCommandDiscoveryResult } from '../../shared/claude-slash-command-discovery'
 import type {
   SkillFreshnessInventory,
   SkillUpdateRun,
@@ -20,10 +21,24 @@ import {
   discoverSkillsOnTarget,
   resolveSkillDiscoveryTarget
 } from '../skills/skill-discovery-target'
+import {
+  discoverClaudeSlashCommandsOnTarget,
+  resolveClaudeSlashCommandDiscoveryTarget
+} from '../skills/claude-command-discovery-target'
 import { registerSkillCloudIpcHandlers } from './skill-cloud-ipc-handlers'
 import { handleMainWindowSkillIpc } from './skill-ipc-main-window'
 
 export function registerSkillsHandlers(store: Store, runtime?: OrcaRuntimeService): void {
+  const discoverClaudeCommands = async (
+    target?: SkillDiscoveryTarget
+  ): Promise<ClaudeSlashCommandDiscoveryResult> => {
+    const parsedTarget = target ? SkillDiscoveryTargetSchema.parse(target) : undefined
+    const resolvedTarget = resolveClaudeSlashCommandDiscoveryTarget(parsedTarget)
+    return discoverClaudeSlashCommandsOnTarget(resolvedTarget, store.getRepos(), {
+      providerRootOverrides: await runtime?.resolveSkillDiscoveryProviderRoots(resolvedTarget),
+      refresh: parsedTarget?.refresh === true
+    })
+  }
   const discover = async (target?: SkillDiscoveryTarget): Promise<SkillDiscoveryResult> => {
     const parsedTarget = target ? SkillDiscoveryTargetSchema.parse(target) : undefined
     const resolvedTarget = resolveSkillDiscoveryTarget(parsedTarget)
@@ -67,6 +82,12 @@ export function registerSkillsHandlers(store: Store, runtime?: OrcaRuntimeServic
   handleMainWindowSkillIpc(
     'skills:discover',
     async (_event, target?: SkillDiscoveryTarget): Promise<SkillDiscoveryResult> => discover(target)
+  )
+
+  handleMainWindowSkillIpc(
+    'claudeCommands:discover',
+    async (_event, target?: SkillDiscoveryTarget): Promise<ClaudeSlashCommandDiscoveryResult> =>
+      discoverClaudeCommands(target)
   )
 
   if (runtime) {

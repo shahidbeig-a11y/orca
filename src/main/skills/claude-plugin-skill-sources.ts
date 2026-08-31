@@ -185,6 +185,41 @@ export function resolveClaudePluginSkillSources(args: {
   return [...roots.values()]
 }
 
+export function resolveClaudePluginCommandSources(args: {
+  metadata: ClaudePluginMetadata
+  cwd: string
+  pathApi?: SkillDiscoveryPathApi
+}): SkillScanRoot[] {
+  const pathApi = args.pathApi ?? defaultPathApi
+  const installed = parseJsonObject(args.metadata.installedPlugins)?.plugins
+  if (!installed || typeof installed !== 'object' || Array.isArray(installed)) {
+    return []
+  }
+  const enabled = readEnabledPlugins(args.metadata.settings)
+  const roots = new Map<string, SkillScanRoot>()
+  for (const [pluginId, rawInstalls] of Object.entries(installed)) {
+    if (enabled.get(pluginId) !== true || !Array.isArray(rawInstalls)) {
+      continue
+    }
+    const install = selectActiveInstall(rawInstalls, args.cwd, pathApi)
+    if (!install) {
+      continue
+    }
+    const commandsPath = pathApi.join(install.installPath, 'commands')
+    if (!roots.has(commandsPath)) {
+      roots.set(commandsPath, {
+        id: `claude-plugin-commands-${stablePathId(commandsPath)}`,
+        label: `Claude plugin ${safePluginLabel(pluginId, pathApi)} commands`,
+        path: commandsPath,
+        sourceKind: 'plugin',
+        providers: ['claude'],
+        owner: 'claude'
+      })
+    }
+  }
+  return [...roots.values()]
+}
+
 async function readMetadataFile(pathValue: string): Promise<string | null> {
   try {
     const fileStat = await stat(pathValue)
@@ -208,12 +243,28 @@ export async function discoverClaudePluginSkillSources(args: {
   homeDir: string
   cwd: string
 }): Promise<SkillScanRoot[]> {
-  const paths = getClaudePluginMetadataPaths(args.homeDir, args.cwd)
+  const metadata = await readClaudePluginMetadata(args.homeDir, args.cwd)
+  return resolveClaudePluginSkillSources({
+    metadata,
+    cwd: args.cwd
+  })
+}
+
+export async function discoverClaudePluginCommandSources(args: {
+  homeDir: string
+  cwd: string
+}): Promise<SkillScanRoot[]> {
+  const metadata = await readClaudePluginMetadata(args.homeDir, args.cwd)
+  return resolveClaudePluginCommandSources({
+    metadata,
+    cwd: args.cwd
+  })
+}
+
+async function readClaudePluginMetadata(homeDir: string, cwd: string): Promise<ClaudePluginMetadata> {
+  const paths = getClaudePluginMetadataPaths(homeDir, cwd)
   const [installedPlugins, ...settings] = await Promise.all(
     [paths.installedPlugins, ...paths.settings].map(readMetadataFile)
   )
-  return resolveClaudePluginSkillSources({
-    metadata: { installedPlugins, settings },
-    cwd: args.cwd
-  })
+  return { installedPlugins, settings }
 }

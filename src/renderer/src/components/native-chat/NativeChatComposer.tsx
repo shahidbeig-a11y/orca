@@ -4,6 +4,10 @@ import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import { getVerifiedNativeChatCommands } from '../../../../shared/native-chat-agent-profiles'
 import {
+  mergeVerifiedAndDiscoveredSlashCommands
+} from '../../../../shared/claude-slash-command-discovery'
+import { getNativeChatAgentProfile } from '../../../../shared/native-chat-agent-profiles'
+import {
   isStructuredAgentSessionComposerCommand,
   STRUCTURED_AGENT_SESSION_SLASH_COMMANDS
 } from '../../../../shared/structured-agent-session-composer'
@@ -28,6 +32,7 @@ import { useNativeChatFileAttachmentActions } from './use-native-chat-file-attac
 import { useNativeChatDictationActions } from './use-native-chat-dictation-actions'
 import { useNativeChatSessionOptionCommand } from './use-native-chat-session-option-command'
 import { useNativeChatPickerState } from './use-native-chat-picker-state'
+import { useNativeChatClaudeCommands } from './use-native-chat-claude-commands'
 import { useNativeChatPickerCommandDispatch } from './use-native-chat-picker-command-dispatch'
 import { useNativeChatTypedInsertion } from './use-native-chat-typed-insertion'
 import type {
@@ -114,13 +119,25 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       dictationState === 'listening' ||
       dictationState === 'stopping'
 
-    const agentCommands = useMemo(
-      () =>
-        structuredTransport
-          ? STRUCTURED_AGENT_SESSION_SLASH_COMMANDS
-          : getVerifiedNativeChatCommands(agent),
-      [agent, structuredTransport]
+    const profile = useMemo(() => getNativeChatAgentProfile(agent), [agent])
+    const beforeCaret = draft.slice(0, caret)
+    const skillPickerTriggered =
+      profile?.skillPrefix === '$'
+        ? /(?:^|\s)\$\S*$/.test(beforeCaret)
+        : profile?.skillPrefix === '/'
+          ? beforeCaret.startsWith('/') && !/\s/.test(beforeCaret)
+          : false
+    const discoveredClaudeCommands = useNativeChatClaudeCommands(
+      agent,
+      terminalTabId,
+      skillPickerTriggered
     )
+    const agentCommands = useMemo(() => {
+      const verified = structuredTransport
+        ? STRUCTURED_AGENT_SESSION_SLASH_COMMANDS
+        : getVerifiedNativeChatCommands(agent)
+      return mergeVerifiedAndDiscoveredSlashCommands(verified, discoveredClaudeCommands.commands)
+    }, [agent, discoveredClaudeCommands.commands, structuredTransport])
     const picker = useNativeChatPickerState({
       agent,
       terminalTabId,

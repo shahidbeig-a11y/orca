@@ -1,4 +1,5 @@
 import type { SkillDiscoveryResult, SkillDiscoveryTarget } from '../../shared/skills'
+import type { ClaudeSlashCommandDiscoveryResult } from '../../shared/claude-slash-command-discovery'
 import type {
   SkillCloudOperation,
   SkillCloudOwnedShare,
@@ -40,6 +41,9 @@ import type {
 
 export type SkillsApi = {
   discover: (target?: SkillDiscoveryTarget) => Promise<SkillDiscoveryResult>
+  discoverClaudeCommands: (
+    target?: SkillDiscoveryTarget
+  ) => Promise<ClaudeSlashCommandDiscoveryResult>
   freshnessInventory: () => Promise<SkillFreshnessInventory>
   startUpdateRun: (names: string[]) => Promise<SkillUpdateStartResult>
   cancelUpdateRun: () => Promise<void>

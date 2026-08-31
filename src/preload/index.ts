@@ -153,6 +153,7 @@ import type {
   ShellOpenLocalPathResult
 } from '../shared/shell-open-types'
 import type { SkillDiscoveryResult, SkillDiscoveryTarget } from '../shared/skills'
+import type { ClaudeSlashCommandDiscoveryResult } from '../shared/claude-slash-command-discovery'
 import type {
   SkillCloudOwnedShare,
   SkillCloudOperation,
@@ -2627,6 +2628,10 @@ const api = {
   skills: {
     discover: (target?: SkillDiscoveryTarget): Promise<SkillDiscoveryResult> =>
       ipcRenderer.invoke('skills:discover', target),
+    discoverClaudeCommands: (
+      target?: SkillDiscoveryTarget
+    ): Promise<ClaudeSlashCommandDiscoveryResult> =>
+      ipcRenderer.invoke('claudeCommands:discover', target),
     freshnessInventory: (): Promise<SkillFreshnessInventory> =>
       ipcRenderer.invoke('skills:freshnessInventory'),
     startUpdateRun: (names: string[]): Promise<SkillUpdateStartResult> =>

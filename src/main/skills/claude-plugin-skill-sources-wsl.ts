@@ -3,6 +3,7 @@ import { quoteBashString } from '../wsl-bash-command'
 import { runWslProcess } from '../wsl/wsl-runner'
 import {
   getClaudePluginMetadataPaths,
+  resolveClaudePluginCommandSources,
   resolveClaudePluginSkillSources,
   type ClaudePluginMetadata
 } from './claude-plugin-skill-sources'
@@ -96,4 +97,23 @@ export async function discoverClaudePluginSkillSourcesInWsl(args: {
   )
   const metadata: ClaudePluginMetadata = { installedPlugins, settings }
   return resolveClaudePluginSkillSources({ metadata, cwd: args.cwd, pathApi: pathPosix })
+}
+
+export async function discoverClaudePluginCommandSourcesInWsl(args: {
+  distro: string
+  homeDir: string
+  cwd: string
+}): Promise<SkillScanRoot[]> {
+  const paths = getClaudePluginMetadataPaths(args.homeDir, args.cwd, pathPosix)
+  const orderedPaths = [paths.installedPlugins, ...paths.settings]
+  const output = await executeWslMetadataRead(
+    args.distro,
+    buildWslClaudePluginMetadataCommand(orderedPaths)
+  )
+  const [installedPlugins, ...settings] = parseWslClaudePluginMetadataOutput(
+    output,
+    orderedPaths.length
+  )
+  const metadata: ClaudePluginMetadata = { installedPlugins, settings }
+  return resolveClaudePluginCommandSources({ metadata, cwd: args.cwd, pathApi: pathPosix })
 }

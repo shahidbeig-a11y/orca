@@ -8,6 +8,7 @@ import {
   type SkillDeleteRequestDependencies
 } from '../../../skills/skill-delete/request-service'
 import { SkillDiscoveryTargetSchema } from '../../../../shared/skills'
+import { ClaudeSlashCommandDiscoveryTargetSchema } from '../../../../shared/claude-slash-command-discovery'
 import {
   SkillInstallPreviewRequestSchema,
   SkillInstallRequestSchema,
@@ -26,6 +27,9 @@ import {
   discoverSkillsOnTarget,
   resolveSkillDiscoveryTarget
 } from '../../../skills/skill-discovery-target'
+import {
+  discoverClaudeSlashCommandsOnTarget
+} from '../../../skills/claude-command-discovery-target'
 import { SKILL_INSTALL_RESULT_V2_CAPABILITY } from '../../../../shared/skill-install-capability'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import {
@@ -69,6 +73,17 @@ export const SKILL_METHODS: RpcMethod[] = [
       // would scan this host's native filesystem for a WSL-configured project.
       const resolvedTarget = resolveDiscoveryTarget(params, runtime)
       return discoverSkillsOnTarget(resolvedTarget, runtime.listRepos(), {
+        providerRootOverrides: await runtime.resolveSkillDiscoveryProviderRoots(resolvedTarget),
+        refresh: params.refresh === true
+      })
+    }
+  }),
+  defineMethod({
+    name: 'claudeCommands.discover',
+    params: ClaudeSlashCommandDiscoveryTargetSchema.default({}),
+    handler: async (params, { runtime }) => {
+      const resolvedTarget = resolveDiscoveryTarget(params, runtime)
+      return discoverClaudeSlashCommandsOnTarget(resolvedTarget, runtime.listRepos(), {
         providerRootOverrides: await runtime.resolveSkillDiscoveryProviderRoots(resolvedTarget),
         refresh: params.refresh === true
       })

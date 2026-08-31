@@ -9,6 +9,7 @@ import type {
 } from '../../../../shared/computer-use-permissions-types'
 import type { SkillFreshnessInventory } from '../../../../shared/skill-freshness'
 import type { SkillDiscoveryResult } from '../../../../shared/skills'
+import type { ClaudeSlashCommandDiscoveryResult } from '../../../../shared/claude-slash-command-discovery'
 import type { SkillDeletePlan, SkillDeleteResult } from '../../../../shared/skill-delete-contract'
 import { SKILL_DELETE_CAPABILITY } from '../../../../shared/skill-install-capability'
 import { callRuntimeResult, getRemoteRuntimeStatus } from './web-runtime-calls'
@@ -146,6 +147,12 @@ export function createSkillsApi(): NonNullable<Partial<PreloadApi>['skills']> {
   return {
     discover: (target) =>
       callRuntimeResult<SkillDiscoveryResult>('skills.discover', target, 15_000),
+    discoverClaudeCommands: (target) =>
+      callRuntimeResult<ClaudeSlashCommandDiscoveryResult>(
+        'claudeCommands.discover',
+        target,
+        15_000
+      ),
     // Why: browser clients have no local skill homes; remote-host freshness stays off until its update rail covers it.
     freshnessInventory: (): Promise<SkillFreshnessInventory> =>
       Promise.resolve({
