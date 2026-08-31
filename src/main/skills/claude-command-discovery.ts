@@ -2,15 +2,17 @@ import { open, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { relative, sep } from 'node:path'
 import { summarizeSkillMarkdown } from '../../shared/skill-metadata'
-import type { ClaudeSlashCommandDiscoveryResult, DiscoveredClaudeSlashCommand } from '../../shared/claude-slash-command-discovery'
+import {
+  collapseDiscoveredCommandsByName,
+  type ClaudeSlashCommandDiscoveryResult,
+  type DiscoveredClaudeSlashCommand
+} from '../../shared/claude-slash-command-discovery'
 import type { Repo } from '../../shared/repo-types'
 import {
   buildClaudeCommandDiscoverySources,
   claudeCommandNameFromRelativePath
 } from './claude-command-discovery-sources'
-import {
-  discoverClaudePluginCommandSources as discoverNativeClaudePluginCommandSources
-} from './claude-plugin-skill-sources'
+import { discoverClaudePluginCommandSources as discoverNativeClaudePluginCommandSources } from './claude-plugin-skill-sources'
 import { findCommandMarkdownFiles } from './claude-command-file-walk'
 import { runSkillCandidateTasks } from './skill-candidate-concurrency'
 import { isSkillRootUnavailableError, SkillScanCoalescer } from './skill-scan-coalescer'
@@ -168,7 +170,7 @@ export async function discoverClaudeSlashCommands(args: {
       mergeScannedCommand(seen, command)
     }
   }
-  const commands = Array.from(seen.values()).sort(compareCommands)
+  const commands = collapseDiscoveredCommandsByName(Array.from(seen.values())).sort(compareCommands)
   return { commands, scannedAt: Date.now() }
 }
 

@@ -1,8 +1,9 @@
 import { posix as pathPosix } from 'node:path'
 import { summarizeSkillMarkdown } from '../../shared/skill-metadata'
-import type {
-  ClaudeSlashCommandDiscoveryResult,
-  DiscoveredClaudeSlashCommand
+import {
+  collapseDiscoveredCommandsByName,
+  type ClaudeSlashCommandDiscoveryResult,
+  type DiscoveredClaudeSlashCommand
 } from '../../shared/claude-slash-command-discovery'
 import { quoteBashString } from '../wsl-bash-command'
 import { runWslProcess } from '../wsl/wsl-runner'
@@ -126,8 +127,8 @@ export function parseWslClaudeCommandDiscoveryOutput(
       throw new Error('WSL Claude command discovery referenced an unknown root.')
     }
   }
-  const commands = [...commandsByPath.values()].sort((left, right) =>
-    left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+  const commands = collapseDiscoveredCommandsByName([...commandsByPath.values()]).sort(
+    (left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
   )
   return { commands, scannedAt }
 }

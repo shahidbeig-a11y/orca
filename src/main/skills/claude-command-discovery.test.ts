@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  collapseDiscoveredCommandsByName,
   mergeVerifiedAndDiscoveredSlashCommands,
   toSlashCommandSuggestions
 } from '../../shared/claude-slash-command-discovery'
@@ -10,7 +11,10 @@ import {
   buildClaudeCommandDiscoverySources,
   claudeCommandNameFromRelativePath
 } from './claude-command-discovery-sources'
-import { clearClaudeCommandRootScanCache, discoverClaudeSlashCommands } from './claude-command-discovery'
+import {
+  clearClaudeCommandRootScanCache,
+  discoverClaudeSlashCommands
+} from './claude-command-discovery'
 
 beforeEach(() => {
   clearClaudeCommandRootScanCache()
@@ -86,6 +90,59 @@ describe('discoverClaudeSlashCommands', () => {
     expect(roots.map((root) => root.path)).toEqual([
       'C:\\Users\\tester\\.claude\\commands',
       'C:\\repo\\worktree\\.claude\\commands'
+    ])
+  })
+
+  it('keeps one row per command name and prefers project over home', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'orca-claude-commands-dup-'))
+    const homeCommands = join(root, 'home', '.claude', 'commands')
+    const projectCommands = join(root, 'project', '.claude', 'commands')
+    await mkdir(homeCommands, { recursive: true })
+    await mkdir(projectCommands, { recursive: true })
+    await writeFile(join(homeCommands, 'foo.md'), '---\ndescription: Home foo\n---\n')
+    await writeFile(join(projectCommands, 'foo.md'), '---\ndescription: Project foo\n---\n')
+
+    const result = await discoverClaudeSlashCommands({
+      homeDir: join(root, 'home'),
+      cwd: join(root, 'project'),
+      repos: []
+    })
+
+    expect(result.commands).toEqual([
+      expect.objectContaining({
+        name: 'foo',
+        description: 'Project foo',
+        commandFilePath: join(projectCommands, 'foo.md'),
+        sourceKind: 'repo'
+      })
+    ])
+  })
+})
+
+describe('collapseDiscoveredCommandsByName', () => {
+  it('prefers repo commands over home commands with the same name', () => {
+    const collapsed = collapseDiscoveredCommandsByName([
+      {
+        name: 'foo',
+        description: 'Home foo',
+        commandFilePath: '/home/tester/.claude/commands/foo.md',
+        sourceKind: 'home',
+        sourceLabel: 'Claude home commands'
+      },
+      {
+        name: 'foo',
+        description: 'Project foo',
+        commandFilePath: '/repo/.claude/commands/foo.md',
+        sourceKind: 'repo',
+        sourceLabel: 'Repo project .claude commands'
+      }
+    ])
+    expect(collapsed).toEqual([
+      expect.objectContaining({
+        name: 'foo',
+        description: 'Project foo',
+        sourceKind: 'repo'
+      })
     ])
   })
 })
