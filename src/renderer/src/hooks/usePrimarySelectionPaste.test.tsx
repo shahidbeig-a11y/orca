@@ -353,6 +353,24 @@ describe('usePrimarySelectionPaste', () => {
     expect(laterPaste.defaultPrevented).toBe(false)
   })
 
+  it('does not arm post-gesture native clipboard paste suppression on macOS', async () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)')
+    readPrimarySelectionTextMock.mockResolvedValue('from-elsewhere')
+    await renderProbe()
+    const editor = appendContentEditable()
+    editor.focus()
+    let nativePaste!: ClipboardEvent
+
+    await act(async () => {
+      dispatchMiddleMouseDown(editor)
+      dispatchMiddleMouseUp(editor)
+      await flushPromises()
+      nativePaste = dispatchNativeClipboardPaste(editor, 'clip-text')
+    })
+
+    expect(nativePaste.defaultPrevented).toBe(false)
+  })
+
   it('does not keep middle-click ownership after the gesture window expires', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_000)
