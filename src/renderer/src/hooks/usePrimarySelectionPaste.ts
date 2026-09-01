@@ -207,7 +207,11 @@ export function usePrimarySelectionPaste(enabled: boolean): void {
 
       const target = pendingMiddleTarget
       pendingMiddleTarget = null
-      swallowNextNativePasteTarget = target
+      // Why: only X11/Linux emits Chromium's follow-up native paste; arming
+      // elsewhere would swallow legitimate keyboard or menu pastes.
+      if (isLinuxUserAgent()) {
+        swallowNextNativePasteTarget = target
+      }
       suppressEvent(event)
       const point = {
         clientX: event.clientX,
