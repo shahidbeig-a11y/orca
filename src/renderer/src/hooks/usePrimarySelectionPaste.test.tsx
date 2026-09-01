@@ -356,6 +356,20 @@ describe('usePrimarySelectionPaste', () => {
   it('does not arm post-gesture native clipboard paste suppression on macOS', async () => {
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)')
     readPrimarySelectionTextMock.mockResolvedValue('from-elsewhere')
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: vi.fn((command: string, _showUI: boolean, text: string) => {
+        if (command !== 'insertText' || !(document.activeElement instanceof HTMLElement)) {
+          return false
+        }
+        document.activeElement.textContent = `${document.activeElement.textContent ?? ''}${text}`
+        return true
+      })
+    })
+    Object.defineProperty(document, 'queryCommandSupported', {
+      configurable: true,
+      value: vi.fn(() => true)
+    })
     await renderProbe()
     const editor = appendContentEditable()
     editor.focus()
@@ -368,6 +382,7 @@ describe('usePrimarySelectionPaste', () => {
       nativePaste = dispatchNativeClipboardPaste(editor, 'clip-text')
     })
 
+    expect(editor.textContent).toBe('from-elsewhere')
     expect(nativePaste.defaultPrevented).toBe(false)
   })
 
