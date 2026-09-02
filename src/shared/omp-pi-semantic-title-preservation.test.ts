@@ -109,6 +109,17 @@ describe('OMP owner rewrite preserves spaced-colon working titles (#17690)', () 
   })
 })
 
+describe('OMP owner rewrite preserves idle separator titles before the first turn', () => {
+  const raw = 'π > New OMP session'
+
+  it('detects idle and OMP identity after the owner rewrite', () => {
+    const rewritten = normalizeCompatibleAgentTitleForOwner(raw, 'omp', { ownerIsLaunch: true })
+    expect(rewritten).toBe('OMP > New OMP session')
+    expect(detectAgentStatusFromTitle(rewritten)).toBe('idle')
+    expect(getAgentLabel(rewritten)).toBe('OMP')
+  })
+})
+
 describe('the churn is gone at the suppressor', () => {
   it('treats consecutive animation frames as decoration', () => {
     for (const build of [ORCA_EXTENSION_WORKING, OMP_NATIVE_WORKING]) {
@@ -265,6 +276,7 @@ describe('latent hazards the reviewers flagged', () => {
     'π ⠙ fixing the sidebar',
     'π : Run a long task',
     'OMP : Run a long task',
+    'OMP > New OMP session',
     'zsh | ⠙ π - a - b'
   ])('is a fixed point when the owner rewrite re-runs on %s', (title) => {
     const once = normalizeCompatibleAgentTitleForOwner(title, 'omp')
@@ -272,6 +284,9 @@ describe('latent hazards the reviewers flagged', () => {
     expect(once).toContain('OMP')
     if (title.includes('Run a long task')) {
       expect(once).toContain('Run a long task')
+    }
+    if (title.includes('New OMP session')) {
+      expect(once).toContain('New OMP session')
     }
   })
 })

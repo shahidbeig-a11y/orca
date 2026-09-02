@@ -62,6 +62,30 @@ export function isLegacyPiCompatibleTitle(title: string): boolean {
   return LEGACY_PI_COMPATIBLE_TITLE_RE.test(title)
 }
 
+/** Brand a Pi/OMP separator title carries, using the same grammar as status detection. */
+export function getPiCompatibleTitleSeparatorBrand(
+  title: string
+): PiCompatibleSyntheticAgentLabel | null {
+  if (containsBrailleSpinner(title)) {
+    return null
+  }
+  if (!PI_COMPATIBLE_SEPARATOR_RE.exec(title)) {
+    return null
+  }
+  const brandMatch = /^\s*(π|Pi|OMP)/u.exec(title)
+  if (!brandMatch) {
+    return null
+  }
+  return brandMatch[1] === 'OMP' ? 'OMP' : 'Pi'
+}
+
+/** Owner-rewritten titles that already use the ASCII Pi/OMP brand plus a state separator. */
+export function isPiCompatibleAsciiSeparatorTitle(title: string): boolean {
+  return (
+    getPiCompatibleTitleSeparatorBrand(title) !== null && /^\s*(?:Pi|OMP)/u.test(title)
+  )
+}
+
 /**
  * Reads the run state a π-branded title encodes in its separator.
  *
