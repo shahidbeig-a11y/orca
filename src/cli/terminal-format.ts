@@ -19,7 +19,7 @@ import type {
 } from '../shared/runtime-types'
 
 export function formatTerminalList(result: RuntimeTerminalListResult): string {
-  const scope = formatTerminalListHostScope(result.hostScope)
+  const scope = formatRuntimeListHostScope(result.hostScope)
   if (result.terminals.length === 0) {
     return `No terminals listed.\n${scope}`
   }
@@ -39,7 +39,9 @@ export function formatTerminalList(result: RuntimeTerminalListResult): string {
 
 // Why: a listing that does not say what it covers reads as absolute, and an
 // absent scope means the host is too old to know — not that it covered everything.
-function formatTerminalListHostScope(scope: RuntimeTerminalListHostScope | undefined): string {
+export function formatRuntimeListHostScope(
+  scope: RuntimeTerminalListHostScope | undefined
+): string {
   if (!scope) {
     return 'scope: unverifiable — this host does not report which hosts it lists'
   }

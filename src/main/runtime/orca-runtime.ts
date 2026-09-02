@@ -529,6 +529,7 @@ import {
   type RuntimeTerminalClose,
   type RuntimeTerminalListHostScope,
   type RuntimeTerminalListResult,
+  type RuntimeWorktreeListHostScope,
   type RuntimeTerminalOrphanAdoptionRequest,
   type RuntimeTerminalOrphanAdoptionResult,
   type RuntimeWorktreeTerminalSleepResult,
@@ -19893,6 +19894,43 @@ export class OrcaRuntimeService {
     }
   }
 
+  private resolveListedWorktreeHostId(
+    worktree: { hostId?: ExecutionHostId; repoId: string },
+    repoById: ReadonlyMap<string, Repo>
+  ): ExecutionHostId {
+    return getWorktreeExecutionHostId(worktree, repoById.get(worktree.repoId))
+  }
+
+  // A truncated listing can starve one host entirely; name the hosts that
+  // contributed rows versus the hosts known but absent from this response.
+  private buildWorktreeListHostScope(
+    allRows: readonly { hostId?: ExecutionHostId; repoId: string }[],
+    listedRows: readonly { hostId?: ExecutionHostId; repoId: string }[],
+    repoById: ReadonlyMap<string, Repo>,
+    queriedHostIds: ReadonlySet<ExecutionHostId> = new Set()
+  ): RuntimeWorktreeListHostScope {
+    const knownHostIds = this.listKnownExecutionHostIds(queriedHostIds)
+    for (const row of allRows) {
+      knownHostIds.add(this.resolveListedWorktreeHostId(row, repoById))
+    }
+    const representedHostIds = new Set<ExecutionHostId>()
+    for (const row of listedRows) {
+      representedHostIds.add(this.resolveListedWorktreeHostId(row, repoById))
+    }
+    const hasQueriedHosts = queriedHostIds.size > 0
+    const hostIds = [...representedHostIds]
+      .filter(
+        (hostId) =>
+          parseExecutionHostId(hostId)?.kind !== 'runtime' &&
+          (!hasQueriedHosts || queriedHostIds.has(hostId))
+      )
+      .sort()
+    const omittedHostIds = [...knownHostIds]
+      .filter((hostId) => !representedHostIds.has(hostId))
+      .sort()
+    return { hostIds, omittedHostIds }
+  }
+
   async inspectTerminalProcessIncarnationLiveness(
     processIncarnation: string,
     serializedHostScope: string | null
@@ -22651,7 +22689,9 @@ export class OrcaRuntimeService {
     )
     // Why: worktree.ps backs the mobile sidebar, so it must use the same
     // host-owned imported-worktree visibility gate as worktree.list/desktop.
-    const freshPtyLiveness = await this.refreshPtyWorktreeRecordsFromController(resolvedWorktrees)
+    const controllerInventory =
+      await this.refreshPtyWorktreeRecordsWithControllerInventory(resolvedWorktrees)
+    const freshPtyLiveness = controllerInventory ? new Set(controllerInventory.livePtyIds) : null
     const repoById = new Map((this.store?.getRepos() ?? []).map((repo) => [repo.id, repo]))
     const platformByRepoId = resolvedWorktreeSnapshot.platformByRepoId
     const summaries = new Map<string, RuntimeWorktreePsSummary>()
@@ -23023,10 +23063,17 @@ export class OrcaRuntimeService {
     )
 
     const sorted = [...summaries.values()].sort(compareWorktreePs)
+    const listed = sorted.slice(0, limit)
     return {
-      worktrees: sorted.slice(0, limit),
+      worktrees: listed,
       totalCount: sorted.length,
-      truncated: sorted.length > limit
+      truncated: sorted.length > limit,
+      hostScope: this.buildWorktreeListHostScope(
+        sorted,
+        listed,
+        repoById,
+        controllerInventory?.queriedHostIds ?? new Set()
+      )
     }
   }
 
@@ -26062,10 +26109,13 @@ export class OrcaRuntimeService {
         visibilitySettings
       )
     })
+    const repoById = new Map((this.store?.getRepos() ?? []).map((repo) => [repo.id, repo]))
+    const listed = worktrees.slice(0, limit)
     return {
-      worktrees: worktrees.slice(0, limit),
+      worktrees: listed,
       totalCount: worktrees.length,
-      truncated: worktrees.length > limit
+      truncated: worktrees.length > limit,
+      hostScope: this.buildWorktreeListHostScope(worktrees, listed, repoById)
     }
   }
 

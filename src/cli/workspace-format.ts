@@ -7,6 +7,11 @@ import type {
   RuntimeWorktreeRecord
 } from '../shared/runtime-types'
 import type { MemorySnapshot, WorktreeMemory } from '../shared/process-stats-types'
+import { formatRuntimeListHostScope } from './terminal-format'
+
+function formatWorktreeHostId(hostId: string | undefined): string {
+  return hostId ?? 'unverifiable'
+}
 
 export function formatMemorySnapshot(snapshot: MemorySnapshot): string {
   const topWorktrees = [...snapshot.worktrees].sort((a, b) => b.memory - a.memory).slice(0, 10)
@@ -131,18 +136,20 @@ export function formatEnvironment(environment: PublicKnownRuntimeEnvironment): s
 }
 
 export function formatWorktreePs(result: RuntimeWorktreePsResult): string {
+  const scope = formatRuntimeListHostScope(result.hostScope)
   if (result.worktrees.length === 0) {
-    return 'No worktrees found.'
+    return `No worktrees found.\n${scope}`
   }
   const body = result.worktrees
     .map(
       (worktree) =>
-        `${worktree.repo} ${worktree.branch}  live:${worktree.liveTerminalCount}  pty:${worktree.hasAttachedPty ? 'yes' : 'no'}  unread:${worktree.unread ? 'yes' : 'no'}\n${worktree.path}${worktree.preview ? `\npreview: ${worktree.preview}` : ''}`
+        `${worktree.repo} ${worktree.branch}  live:${worktree.liveTerminalCount}  pty:${worktree.hasAttachedPty ? 'yes' : 'no'}  unread:${worktree.unread ? 'yes' : 'no'}  host=${formatWorktreeHostId(worktree.hostId)}\n${worktree.path}${worktree.preview ? `\npreview: ${worktree.preview}` : ''}`
     )
     .join('\n\n')
+  const bodyWithScope = `${body}\n\n${scope}`
   return result.truncated
-    ? `${body}\n\ntruncated: showing ${result.worktrees.length} of ${result.totalCount}`
-    : body
+    ? `${bodyWithScope}\ntruncated: showing ${result.worktrees.length} of ${result.totalCount}`
+    : bodyWithScope
 }
 
 export function formatRepoList(result: RuntimeRepoList): string {
@@ -169,18 +176,20 @@ export function formatRepoRefs(result: RuntimeRepoSearchRefs): string {
 }
 
 export function formatWorktreeList(result: RuntimeWorktreeListResult): string {
+  const scope = formatRuntimeListHostScope(result.hostScope)
   if (result.worktrees.length === 0) {
-    return 'No worktrees found.'
+    return `No worktrees found.\n${scope}`
   }
   const body = result.worktrees
     .map((worktree) => {
       const childCount = worktree.childWorktreeIds?.length ?? 0
-      return `${String(worktree.id)}  ${String(worktree.branch)}  ${String(worktree.path)}\ndisplayName: ${String(worktree.displayName ?? '')}\nparentWorktreeId: ${String(worktree.parentWorktreeId ?? 'null')}\nchildWorktreeIds: ${childCount > 0 ? worktree.childWorktreeIds.join(',') : '[]'}\nlinkedIssue: ${String(worktree.linkedIssue ?? 'null')}\ncomment: ${String(worktree.comment ?? '')}`
+      return `${String(worktree.id)}  ${String(worktree.branch)}  ${String(worktree.path)}  host=${formatWorktreeHostId(worktree.hostId)}\ndisplayName: ${String(worktree.displayName ?? '')}\nparentWorktreeId: ${String(worktree.parentWorktreeId ?? 'null')}\nchildWorktreeIds: ${childCount > 0 ? worktree.childWorktreeIds.join(',') : '[]'}\nlinkedIssue: ${String(worktree.linkedIssue ?? 'null')}\ncomment: ${String(worktree.comment ?? '')}`
     })
     .join('\n\n')
+  const bodyWithScope = `${body}\n\n${scope}`
   return result.truncated
-    ? `${body}\n\ntruncated: showing ${result.worktrees.length} of ${result.totalCount}`
-    : body
+    ? `${bodyWithScope}\ntruncated: showing ${result.worktrees.length} of ${result.totalCount}`
+    : bodyWithScope
 }
 
 export function formatWorktreeShow(result: { worktree: RuntimeWorktreeRecord }): string {

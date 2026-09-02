@@ -1,4 +1,5 @@
 import type { AgentStatusState, AgentType, AgentWorkingMode } from './agent-status-types'
+import type { ExecutionHostId } from './execution-host'
 import type { BaseRefSearchResult, Repo } from './repo-types'
 import type { CreateWorktreeResult, RemoveWorktreeResult } from './worktree/create-types'
 import type {
@@ -121,10 +122,17 @@ export type RuntimeWorktreeRemoveResult = RemoveWorktreeResult & {
   warning?: string
 }
 
+export type RuntimeWorktreeListHostScope = {
+  hostIds: ExecutionHostId[]
+  omittedHostIds: ExecutionHostId[]
+}
+
 export type RuntimeWorktreePsResult = {
   worktrees: RuntimeWorktreePsSummary[]
   totalCount: number
   truncated: boolean
+  /** Absent from hosts that predate the field; treat that scope as unverifiable. */
+  hostScope?: RuntimeWorktreeListHostScope
 }
 
 export type RuntimeWorktreePsSnapshotResult = RuntimeWorktreePsResult & { snapshotId: string }
@@ -150,4 +158,6 @@ export type RuntimeWorktreeListResult = {
   worktrees: RuntimeWorktreeRecord[]
   totalCount: number
   truncated: boolean
+  /** Absent from hosts that predate the field; treat that scope as unverifiable. */
+  hostScope?: RuntimeWorktreeListHostScope
 }
