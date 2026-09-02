@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from './orca-runtime'
+import { DEFAULT_WORKTREE_LIST_LIMIT, DEFAULT_WORKTREE_PS_LIMIT } from './orca-runtime-postlude'
 import { getDefaultWorkspaceSession } from '../../shared/constants'
 import type { WorkspaceSessionState } from '../../shared/workspace-session-state-types'
 import type { GitWorktreeInfo } from '../../shared/worktree/types'
 
 const LOCAL_REPO_ID = 'repo-local'
 const SSH_REPO_ID = 'repo-ssh'
-const DEFAULT_LIST_LIMIT = 200
+const SSH_HOST_ID = 'ssh:box-1'
+// Round-robin with local-first host order leaves SSH with zero rows at this cap.
+const LIMIT_EXCLUDING_SSH_HOST = 1
 
 const REPOS = [
   {
@@ -46,7 +49,7 @@ function makeStore() {
   const session: WorkspaceSessionState = getDefaultWorkspaceSession()
   return {
     getWorkspaceSession: vi.fn(() => session),
-    getWorkspaceSessionHostIds: vi.fn(() => ['local', 'ssh:box-1']),
+    getWorkspaceSessionHostIds: vi.fn(() => ['local', SSH_HOST_ID]),
     getFolderWorkspaces: vi.fn(() => []),
     getProjectGroups: vi.fn(() => []),
     setWorkspaceSession: vi.fn(),
@@ -90,68 +93,112 @@ function qaReproCatalog(): TestResolvedWorktree[] {
     resolvedWorktree(LOCAL_REPO_ID, `/aaa/local-${index}`, 'local')
   )
   const sshRows = Array.from({ length: 23 }, (_, index) =>
-    resolvedWorktree(SSH_REPO_ID, `/zzz/ssh-${index}`, 'ssh:box-1')
+    resolvedWorktree(SSH_REPO_ID, `/zzz/ssh-${index}`, SSH_HOST_ID)
   )
   return [...localRows, ...sshRows]
+}
+
+function mockListResolvedWorktrees(runtime: OrcaRuntimeService, worktrees: TestResolvedWorktree[]) {
+  vi.spyOn(
+    runtime as unknown as { listResolvedWorktrees: () => Promise<TestResolvedWorktree[]> },
+    'listResolvedWorktrees'
+  ).mockResolvedValue(worktrees)
+}
+
+function mockListResolvedWorktreeSnapshot(
+  runtime: OrcaRuntimeService,
+  worktrees: TestResolvedWorktree[]
+) {
+  vi.spyOn(
+    runtime as unknown as {
+      listResolvedWorktreeSnapshot: () => Promise<{
+        worktrees: TestResolvedWorktree[]
+        platformByRepoId: Map<string, 'linux'>
+      }>
+    },
+    'listResolvedWorktreeSnapshot'
+  ).mockResolvedValue({
+    worktrees,
+    platformByRepoId: new Map([
+      [LOCAL_REPO_ID, 'linux'],
+      [SSH_REPO_ID, 'linux']
+    ])
+  })
+}
+
+function mockPtyControllerWithHostScope(runtime: OrcaRuntimeService) {
+  runtime.setPtyController({
+    spawn: vi.fn(async () => ({ id: 'never' })),
+    write: () => true,
+    kill: () => true,
+    listProcesses: vi.fn(async () => []),
+    listProcessesWithHostScope: vi.fn(async () => ({
+      processes: [],
+      hostIds: ['local', SSH_HOST_ID]
+    }))
+  } as never)
 }
 
 describe('listManagedWorktrees host scope', () => {
   it('includes SSH rows at the default limit when local worktrees dominate', async () => {
     const runtime = new OrcaRuntimeService(makeStore() as never)
-    vi.spyOn(
-      runtime as unknown as { listResolvedWorktrees: () => Promise<TestResolvedWorktree[]> },
-      'listResolvedWorktrees'
-    ).mockResolvedValue(qaReproCatalog())
+    mockListResolvedWorktrees(runtime, qaReproCatalog())
 
-    const result = await runtime.listManagedWorktrees(undefined, DEFAULT_LIST_LIMIT)
+    const result = await runtime.listManagedWorktrees()
 
     expect(result.truncated).toBe(true)
     expect(result.totalCount).toBe(457)
-    expect(result.worktrees.length).toBe(DEFAULT_LIST_LIMIT)
-    expect(result.worktrees.some((worktree) => worktree.hostId === 'ssh:box-1')).toBe(true)
-    expect(result.worktrees.filter((worktree) => worktree.hostId === 'ssh:box-1').length).toBe(23)
-    expect(result.hostScope?.hostIds).toEqual(expect.arrayContaining(['local', 'ssh:box-1']))
+    expect(result.worktrees.length).toBe(DEFAULT_WORKTREE_LIST_LIMIT)
+    expect(result.worktrees.some((worktree) => worktree.hostId === SSH_HOST_ID)).toBe(true)
+    expect(result.worktrees.filter((worktree) => worktree.hostId === SSH_HOST_ID).length).toBe(23)
+    expect(result.hostScope?.hostIds).toEqual(expect.arrayContaining(['local', SSH_HOST_ID]))
     expect(result.hostScope?.omittedHostIds).toEqual([])
+  })
+
+  it('names SSH in omittedHostIds when the cap fully excludes that host', async () => {
+    const runtime = new OrcaRuntimeService(makeStore() as never)
+    mockListResolvedWorktrees(runtime, qaReproCatalog())
+
+    const result = await runtime.listManagedWorktrees(undefined, LIMIT_EXCLUDING_SSH_HOST)
+
+    expect(result.truncated).toBe(true)
+    expect(result.totalCount).toBe(457)
+    expect(result.worktrees.length).toBe(LIMIT_EXCLUDING_SSH_HOST)
+    expect(result.worktrees.every((worktree) => worktree.hostId === 'local')).toBe(true)
+    expect(result.hostScope?.hostIds).toEqual(['local'])
+    expect(result.hostScope?.omittedHostIds).toEqual([SSH_HOST_ID])
   })
 })
 
 describe('getWorktreePs host scope', () => {
   it('includes SSH rows at the default limit when local worktrees dominate', async () => {
     const runtime = new OrcaRuntimeService(makeStore() as never)
-    vi.spyOn(
-      runtime as unknown as {
-        listResolvedWorktreeSnapshot: () => Promise<{
-          worktrees: TestResolvedWorktree[]
-          platformByRepoId: Map<string, 'linux'>
-        }>
-      },
-      'listResolvedWorktreeSnapshot'
-    ).mockResolvedValue({
-      worktrees: qaReproCatalog(),
-      platformByRepoId: new Map([
-        [LOCAL_REPO_ID, 'linux'],
-        [SSH_REPO_ID, 'linux']
-      ])
-    })
-    runtime.setPtyController({
-      spawn: vi.fn(async () => ({ id: 'never' })),
-      write: () => true,
-      kill: () => true,
-      listProcesses: vi.fn(async () => []),
-      listProcessesWithHostScope: vi.fn(async () => ({
-        processes: [],
-        hostIds: ['local', 'ssh:box-1']
-      }))
-    } as never)
+    mockListResolvedWorktreeSnapshot(runtime, qaReproCatalog())
+    mockPtyControllerWithHostScope(runtime)
 
-    const result = await runtime.getWorktreePs(DEFAULT_LIST_LIMIT)
+    const result = await runtime.getWorktreePs()
 
     expect(result.truncated).toBe(true)
     expect(result.totalCount).toBe(457)
-    expect(result.worktrees.length).toBe(DEFAULT_LIST_LIMIT)
-    expect(result.worktrees.some((worktree) => worktree.hostId === 'ssh:box-1')).toBe(true)
-    expect(result.worktrees.filter((worktree) => worktree.hostId === 'ssh:box-1').length).toBe(23)
-    expect(result.hostScope?.hostIds).toEqual(expect.arrayContaining(['local', 'ssh:box-1']))
+    expect(result.worktrees.length).toBe(DEFAULT_WORKTREE_PS_LIMIT)
+    expect(result.worktrees.some((worktree) => worktree.hostId === SSH_HOST_ID)).toBe(true)
+    expect(result.worktrees.filter((worktree) => worktree.hostId === SSH_HOST_ID).length).toBe(23)
+    expect(result.hostScope?.hostIds).toEqual(expect.arrayContaining(['local', SSH_HOST_ID]))
     expect(result.hostScope?.omittedHostIds).toEqual([])
+  })
+
+  it('names SSH in omittedHostIds when the cap fully excludes that host', async () => {
+    const runtime = new OrcaRuntimeService(makeStore() as never)
+    mockListResolvedWorktreeSnapshot(runtime, qaReproCatalog())
+    mockPtyControllerWithHostScope(runtime)
+
+    const result = await runtime.getWorktreePs(LIMIT_EXCLUDING_SSH_HOST)
+
+    expect(result.truncated).toBe(true)
+    expect(result.totalCount).toBe(457)
+    expect(result.worktrees.length).toBe(LIMIT_EXCLUDING_SSH_HOST)
+    expect(result.worktrees.every((worktree) => worktree.hostId === 'local')).toBe(true)
+    expect(result.hostScope?.hostIds).toEqual(['local'])
+    expect(result.hostScope?.omittedHostIds).toEqual([SSH_HOST_ID])
   })
 })
