@@ -1,4 +1,5 @@
 import type { AgentStatusState, AgentType, AgentWorkingMode } from './agent-status-types'
+import type { ExecutionHostId } from './execution-host'
 import type { BaseRefSearchResult, Repo } from './repo-types'
 import type { CreateWorktreeResult, RemoveWorktreeResult } from './worktree/create-types'
 import type {
@@ -121,6 +122,8 @@ export type RuntimeWorktreeRemoveResult = RemoveWorktreeResult & {
   removed: boolean
   warning?: string
 }
+
+export type RuntimeWorktreeListHostScope = RuntimeListingHostScope
 
 export type RuntimeWorktreePsResult = {
   worktrees: RuntimeWorktreePsSummary[]
