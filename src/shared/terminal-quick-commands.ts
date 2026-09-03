@@ -253,20 +253,20 @@ export function buildTerminalQuickCommandInput(command: TerminalCommandQuickComm
 
 const LINE_BREAK_RE = /\r\n|\r|\n/
 
-// Why: quick-command lines are independent shell commands; one shell command
-// list prevents foreground programs from reading later lines as stdin.
+// Why: multiline quick commands are shell scripts; newlines must survive intact
+// so continuations, grouped statements, and bracket tests stay valid.
 export function flattenTerminalQuickCommand(
   command: TerminalCommandQuickCommand
 ): TerminalCommandQuickCommand {
   if (!LINE_BREAK_RE.test(command.command)) {
     return command
   }
+  const normalized = command.command.replace(/\r\n|\r/g, '\n')
+  if (normalized === command.command) {
+    return command
+  }
   return {
     ...command,
-    command: command.command
-      .split(LINE_BREAK_RE)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .join('; ')
+    command: normalized
   }
 }

@@ -27,14 +27,14 @@ describe('mobile quick-command launch', () => {
     expect(supportsMobileQuickCommands(['terminal.quick-commands.v1'])).toBe(true)
   })
 
-  it('joins multiline runnable commands with "; " to match desktop', () => {
+  it('preserves multiline runnable commands to match desktop', () => {
     // Parity with desktop flattenTerminalQuickCommand: the same saved command
     // must run identically on desktop and mobile.
     expect(
       buildMobileQuickCommandLaunch(command({ command: 'cd app\nnpm install\nnpm test' }))
     ).toEqual({
       options: {
-        startupCommand: 'cd app; npm install; npm test',
+        startupCommand: 'cd app\nnpm install\nnpm test',
         startupCommandDelivery: 'shell-ready'
       }
     })

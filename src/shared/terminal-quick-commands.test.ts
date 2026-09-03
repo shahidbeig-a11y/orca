@@ -346,43 +346,86 @@ describe('flattenTerminalQuickCommand', () => {
     expect(flattenTerminalQuickCommand(command)).toBe(command)
   })
 
-  it('replaces newlines with semicolons and spaces', () => {
+  it('preserves newlines between independent shell statements', () => {
     const result = flattenTerminalQuickCommand({
       id: 'test',
       label: 'Test',
       command: 'cd packages\nbun run build\ncd ..',
       appendEnter: true
     })
-    expect(result.command).toBe('cd packages; bun run build; cd ..')
+    expect(result.command).toBe('cd packages\nbun run build\ncd ..')
+    expect(result.command).not.toContain(';')
   })
 
-  it('collapses consecutive newlines into a single separator', () => {
+  it('preserves multiline shell constructs without injecting semicolons', () => {
+    const command = [
+      'export ANDROID_SDK_ROOT="$ANDROID_HOME"',
+      './gradlew -p PROJECT_DIR :MODULE:TASK --console=plain',
+      '[ -f "$REPORT_FILE" ]',
+      '|| open_status=$?'
+    ].join('\n')
     const result = flattenTerminalQuickCommand({
       id: 'test',
       label: 'Test',
-      command: 'echo one\n\n\necho two',
+      command,
       appendEnter: true
     })
-    expect(result.command).toBe('echo one; echo two')
+    expect(result.command).toBe(command)
+    expect(result.command).not.toMatch(/export;/)
+    expect(result.command).not.toMatch(/PROJECT_DIR;/)
+    expect(result.command).not.toMatch(/\[ -f;/)
+    expect(result.command).not.toMatch(/\|\|;/)
   })
 
-  it('handles Windows-style CRLF endings', () => {
+  it('preserves backslash line continuations', () => {
+    const command = 'orca tab create \\\n  --worktree WORKTREE \\\n  --url URL \\\n  --json'
+    const result = flattenTerminalQuickCommand({
+      id: 'test',
+      label: 'Test',
+      command,
+      appendEnter: true
+    })
+    expect(result.command).toBe(command)
+    expect(result.command).not.toContain('\\;')
+  })
+
+  it('preserves subshell scripts with if conditions', () => {
+    const command = [
+      '(',
+      '  value="hello"',
+      '  if [ -n "$value" ]; then',
+      '    printf \'%s\\n\' "$value"',
+      '  fi',
+      ')'
+    ].join('\n')
+    const result = flattenTerminalQuickCommand({
+      id: 'test',
+      label: 'Test',
+      command,
+      appendEnter: true
+    })
+    expect(result.command).toBe(command)
+    expect(result.command).not.toMatch(/if \[ -n;/)
+  })
+
+  it('normalizes Windows-style CRLF endings to LF', () => {
     const result = flattenTerminalQuickCommand({
       id: 'test',
       label: 'Test',
       command: 'echo one\r\necho two',
       appendEnter: true
     })
-    expect(result.command).toBe('echo one; echo two')
+    expect(result.command).toBe('echo one\necho two')
   })
 
-  it('drops empty edge lines without leaving dangling separators', () => {
+  it('preserves blank lines and indentation inside multiline commands', () => {
+    const command = '\n  echo one  \n\n  echo two\n'
     const result = flattenTerminalQuickCommand({
       id: 'test',
       label: 'Test',
-      command: '\n  echo one  \n\n  echo two\n',
+      command,
       appendEnter: true
     })
-    expect(result.command).toBe('echo one; echo two')
+    expect(result.command).toBe(command)
   })
 })

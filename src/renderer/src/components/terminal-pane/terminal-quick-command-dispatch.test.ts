@@ -67,7 +67,7 @@ describe('sendTerminalQuickCommandToPane', () => {
     expect(mocks.recordTerminalUserInputForLeaf).not.toHaveBeenCalled()
   })
 
-  it('flattens multiline commands with semicolons before sending', () => {
+  it('preserves multiline commands before sending', () => {
     const sendInput = vi.fn(() => true)
     const pane = createPane()
     const commandText = 'cd packages\nbun run build\ncd ..'
@@ -85,11 +85,11 @@ describe('sendTerminalQuickCommandToPane', () => {
     })
 
     expect(sent).toBe(true)
-    expect(sendInput).toHaveBeenCalledWith('cd packages; bun run build; cd ..\r')
+    expect(sendInput).toHaveBeenCalledWith('cd packages\nbun run build\ncd ..\r')
     expect(pane.terminal.focus).toHaveBeenCalledOnce()
   })
 
-  it('flattens multiline insert-only commands without submitting', () => {
+  it('preserves multiline insert-only commands without submitting', () => {
     const sendInput = vi.fn(() => true)
     const pane = createPane()
     const commandText = 'echo one\necho two'
@@ -107,7 +107,7 @@ describe('sendTerminalQuickCommandToPane', () => {
     })
 
     expect(sent).toBe(true)
-    expect(sendInput).toHaveBeenCalledWith('echo one; echo two')
+    expect(sendInput).toHaveBeenCalledWith('echo one\necho two')
     expect(pane.terminal.focus).toHaveBeenCalledOnce()
   })
 
