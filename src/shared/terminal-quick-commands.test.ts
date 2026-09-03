@@ -304,6 +304,40 @@ describe('terminal quick commands', () => {
     ).toBe('git status')
   })
 
+  it('wraps multiline terminal input in bracketed paste', () => {
+    const command = 'echo one\necho two'
+    expect(
+      buildTerminalQuickCommandInput({
+        id: 'multiline',
+        label: 'Multiline',
+        command,
+        appendEnter: true
+      })
+    ).toBe(`\x1b[200~${command}\x1b[201~\r`)
+    expect(
+      buildTerminalQuickCommandInput(
+        {
+          id: 'insert',
+          label: 'Insert',
+          command,
+          appendEnter: false
+        },
+        true
+      )
+    ).toBe(`\x1b[200~${command}\x1b[201~`)
+    expect(
+      buildTerminalQuickCommandInput(
+        {
+          id: 'insert',
+          label: 'Insert',
+          command,
+          appendEnter: false
+        },
+        false
+      )
+    ).toBe(command)
+  })
+
   it('classifies quick command actions and body text', () => {
     const terminal = {
       id: 'status',

@@ -9,11 +9,12 @@ vi.mock('./terminal-input-activity', () => ({
 }))
 import { sendTerminalQuickCommandToPane } from './terminal-quick-command-dispatch'
 
-function createPane() {
+function createPane(bracketedPasteMode = true) {
   return {
     leafId: 'leaf-1',
     terminal: {
-      focus: vi.fn()
+      focus: vi.fn(),
+      modes: { bracketedPasteMode }
     }
   }
 }
@@ -85,7 +86,7 @@ describe('sendTerminalQuickCommandToPane', () => {
     })
 
     expect(sent).toBe(true)
-    expect(sendInput).toHaveBeenCalledWith('cd packages\nbun run build\ncd ..\r')
+    expect(sendInput).toHaveBeenCalledWith(`\x1b[200~${commandText}\x1b[201~\r`)
     expect(pane.terminal.focus).toHaveBeenCalledOnce()
   })
 
@@ -107,7 +108,29 @@ describe('sendTerminalQuickCommandToPane', () => {
     })
 
     expect(sent).toBe(true)
-    expect(sendInput).toHaveBeenCalledWith('echo one\necho two')
+    expect(sendInput).toHaveBeenCalledWith(`\x1b[200~${commandText}\x1b[201~`)
+    expect(pane.terminal.focus).toHaveBeenCalledOnce()
+  })
+
+  it('writes raw multiline input when bracketed paste mode is off', () => {
+    const sendInput = vi.fn(() => true)
+    const pane = createPane(false)
+    const commandText = 'echo one\necho two'
+
+    const sent = sendTerminalQuickCommandToPane({
+      command: {
+        id: 'insert',
+        label: 'Insert',
+        command: commandText,
+        appendEnter: false
+      },
+      pane,
+      tabId: 'tab-1',
+      transport: { sendInput }
+    })
+
+    expect(sent).toBe(true)
+    expect(sendInput).toHaveBeenCalledWith(commandText)
     expect(pane.terminal.focus).toHaveBeenCalledOnce()
   })
 

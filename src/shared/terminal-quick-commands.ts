@@ -1,3 +1,4 @@
+import { buildStartupCommandSubmission } from './startup-command-submission'
 import { isTuiAgent, TUI_AGENT_CONFIG } from './tui-agent-config'
 import type {
   TerminalAgentQuickCommand,
@@ -247,8 +248,14 @@ export function applyTerminalQuickCommandMutation(
   return commands.map((command, index) => (index === existingIndex ? mutation.command : command))
 }
 
-export function buildTerminalQuickCommandInput(command: TerminalCommandQuickCommand): string {
-  return command.appendEnter ? `${command.command}\r` : command.command
+export function buildTerminalQuickCommandInput(
+  command: TerminalCommandQuickCommand,
+  bracketedPasteSafe = true
+): string {
+  return buildStartupCommandSubmission(command.command, {
+    submit: command.appendEnter ? '\r' : '',
+    bracketedPasteSafe
+  })
 }
 
 const LINE_BREAK_RE = /\r\n|\r|\n/
