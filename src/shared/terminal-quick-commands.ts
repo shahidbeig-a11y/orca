@@ -261,6 +261,10 @@ export function buildQuickCommandSubmission(
   if (bracketedPasteSafe && (command.includes('\n') || command.includes('\r'))) {
     return `${BRACKETED_PASTE_START}${command}${BRACKETED_PASTE_END}${submit}`
   }
+  const trailingTerminator = /\r\n$|\r$|\n$/.exec(command)?.[0] ?? ''
+  if (trailingTerminator && submit && trailingTerminator !== submit) {
+    return `${command.slice(0, -trailingTerminator.length)}${submit}`
+  }
   return buildStartupCommandSubmission(command, { submit, bracketedPasteSafe })
 }
 

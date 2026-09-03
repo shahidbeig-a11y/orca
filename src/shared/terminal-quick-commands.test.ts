@@ -408,6 +408,21 @@ describe('terminal quick commands', () => {
         )
       ).toBe(commandWithTrailingLf)
     })
+
+    it('Windows non-bracketed quick command keeps body LF but submits with CR', () => {
+      expect(
+        buildQuickCommandSubmission('git status\n', {
+          submit: '\r',
+          bracketedPasteSafe: false
+        })
+      ).toBe('git status\r')
+      expect(
+        buildQuickCommandSubmission(commandWithTrailingLf, {
+          submit: '\r',
+          bracketedPasteSafe: false
+        })
+      ).toBe('echo one\necho two\r')
+    })
   })
 
   it('classifies quick command actions and body text', () => {

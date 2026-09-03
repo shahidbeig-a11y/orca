@@ -200,4 +200,21 @@ describe('writeStartupCommandWhenShellReady', () => {
 
     expect(proc._writes).toEqual([`\x1b[200~${command}\x1b[201~\n`])
   })
+
+  it('submits Windows quick commands ending in LF with CR when bracketed paste is unavailable', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    const proc = createMockProc()
+    const ready = Promise.resolve()
+    const command = 'git status\n'
+    writeStartupCommandWhenShellReady(ready, proc, command, () => {}, {
+      quickCommandSubmission: true
+    })
+
+    await ready
+    proc._emitData('\r\nPS C:\\repo> ')
+    vi.advanceTimersByTime(30)
+    await Promise.resolve()
+
+    expect(proc._writes).toEqual(['git status\r'])
+  })
 })
