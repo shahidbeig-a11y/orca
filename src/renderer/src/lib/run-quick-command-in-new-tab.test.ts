@@ -76,7 +76,8 @@ describe('runQuickCommandInNewTab', () => {
       quickCommandLabel: 'Build'
     })
     expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
-      command: 'cd packages\nbun run build\ncd ..'
+      command: 'cd packages\nbun run build\ncd ..',
+      quickCommandSubmission: true
     })
     expect(mockState.setRecentQuickCommandForGroup).toHaveBeenCalledWith('group-1', 'build')
   })
@@ -115,7 +116,8 @@ describe('runQuickCommandInNewTab', () => {
     })
 
     expect(mockState.queueTabStartupCommand).toHaveBeenCalledWith('tab-new', {
-      command: 'git status'
+      command: 'git status',
+      quickCommandSubmission: true
     })
   })
 

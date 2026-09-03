@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { TerminalQuickCommand } from '../../../src/shared/terminal-quick-command-types'
 import {
+  buildQuickCommandSubmission,
+  flattenTerminalQuickCommand
+} from '../../../src/shared/terminal-quick-commands'
+import {
   buildMobileQuickCommandLaunch,
   getQuickCommandDisplayPreview,
   getQuickCommandPreview,
@@ -25,6 +29,19 @@ describe('mobile quick-command launch', () => {
     expect(supportsMobileQuickCommands([])).toBe(false)
     expect(supportsMobileQuickCommands(['terminal.binary-stream.v1'])).toBe(false)
     expect(supportsMobileQuickCommands(['terminal.quick-commands.v1'])).toBe(true)
+  })
+
+  it('preserves trailing LF for shell-ready mobile launch commands', () => {
+    const commandText = 'echo one\necho two\n'
+    expect(
+      buildQuickCommandSubmission(
+        flattenTerminalQuickCommand(command({ command: commandText })).command,
+        {
+          submit: '\r',
+          bracketedPasteSafe: true
+        }
+      )
+    ).toBe(`\x1b[200~${commandText}\x1b[201~\r`)
   })
 
   it('preserves multiline runnable commands to match desktop', () => {

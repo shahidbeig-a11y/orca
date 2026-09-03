@@ -90,6 +90,48 @@ describe('sendTerminalQuickCommandToPane', () => {
     expect(pane.terminal.focus).toHaveBeenCalledOnce()
   })
 
+  it('preserves trailing LF inside bracketed paste for multiline run commands', () => {
+    const sendInput = vi.fn(() => true)
+    const pane = createPane()
+    const commandText = 'echo one\necho two\n'
+
+    const sent = sendTerminalQuickCommandToPane({
+      command: {
+        id: 'run',
+        label: 'Run',
+        command: commandText,
+        appendEnter: true
+      },
+      pane,
+      tabId: 'tab-1',
+      transport: { sendInput }
+    })
+
+    expect(sent).toBe(true)
+    expect(sendInput).toHaveBeenCalledWith(`\x1b[200~${commandText}\x1b[201~\r`)
+  })
+
+  it('preserves trailing LF inside bracketed paste for multiline insert-only commands', () => {
+    const sendInput = vi.fn(() => true)
+    const pane = createPane()
+    const commandText = 'echo one\necho two\n'
+
+    const sent = sendTerminalQuickCommandToPane({
+      command: {
+        id: 'insert',
+        label: 'Insert',
+        command: commandText,
+        appendEnter: false
+      },
+      pane,
+      tabId: 'tab-1',
+      transport: { sendInput }
+    })
+
+    expect(sent).toBe(true)
+    expect(sendInput).toHaveBeenCalledWith(`\x1b[200~${commandText}\x1b[201~`)
+  })
+
   it('preserves multiline insert-only commands without submitting', () => {
     const sendInput = vi.fn(() => true)
     const pane = createPane()

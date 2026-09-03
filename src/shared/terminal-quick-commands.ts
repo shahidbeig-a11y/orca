@@ -248,11 +248,27 @@ export function applyTerminalQuickCommandMutation(
   return commands.map((command, index) => (index === existingIndex ? mutation.command : command))
 }
 
+const BRACKETED_PASTE_START = '\x1b[200~'
+const BRACKETED_PASTE_END = '\x1b[201~'
+
+export function buildQuickCommandSubmission(
+  command: string,
+  options: { submit: string; bracketedPasteSafe: boolean }
+): string {
+  const { submit, bracketedPasteSafe } = options
+  // Why: quick-command scripts may end with an intentional trailing newline; agent
+  // launch strips that before bracketed paste, but saved command text must not.
+  if (bracketedPasteSafe && (command.includes('\n') || command.includes('\r'))) {
+    return `${BRACKETED_PASTE_START}${command}${BRACKETED_PASTE_END}${submit}`
+  }
+  return buildStartupCommandSubmission(command, { submit, bracketedPasteSafe })
+}
+
 export function buildTerminalQuickCommandInput(
   command: TerminalCommandQuickCommand,
   bracketedPasteSafe = true
 ): string {
-  return buildStartupCommandSubmission(command.command, {
+  return buildQuickCommandSubmission(command.command, {
     submit: command.appendEnter ? '\r' : '',
     bracketedPasteSafe
   })

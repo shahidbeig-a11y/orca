@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyTerminalQuickCommandMutation,
+  buildQuickCommandSubmission,
   buildTerminalQuickCommandInput,
   flattenTerminalQuickCommand,
   getTerminalQuickCommandAction,
@@ -336,6 +337,77 @@ describe('terminal quick commands', () => {
         false
       )
     ).toBe(command)
+  })
+
+  describe('trailing newline preservation', () => {
+    const commandWithTrailingLf = 'echo one\necho two\n'
+    const pasteBody = `\x1b[200~${commandWithTrailingLf}\x1b[201~`
+
+    it('existing-pane dispatch insert-only keeps trailing LF inside bracketed paste', () => {
+      expect(
+        buildTerminalQuickCommandInput(
+          {
+            id: 'insert',
+            label: 'Insert',
+            command: commandWithTrailingLf,
+            appendEnter: false
+          },
+          true
+        )
+      ).toBe(pasteBody)
+    })
+
+    it('existing-pane dispatch run keeps trailing LF inside bracketed paste before submit', () => {
+      expect(
+        buildTerminalQuickCommandInput(
+          {
+            id: 'run',
+            label: 'Run',
+            command: commandWithTrailingLf,
+            appendEnter: true
+          },
+          true
+        )
+      ).toBe(`${pasteBody}\r`)
+    })
+
+    it('new-tab startup keeps trailing LF inside bracketed paste', () => {
+      expect(
+        buildQuickCommandSubmission(commandWithTrailingLf, {
+          submit: '\n',
+          bracketedPasteSafe: true
+        })
+      ).toBe(`${pasteBody}\n`)
+    })
+
+    it('mobile shell-ready launch keeps trailing LF inside bracketed paste', () => {
+      expect(
+        buildQuickCommandSubmission(commandWithTrailingLf, {
+          submit: '\r',
+          bracketedPasteSafe: true
+        })
+      ).toBe(`${pasteBody}\r`)
+    })
+
+    it('bracketedPasteSafe false writes raw command without stripping trailing LF', () => {
+      expect(
+        buildQuickCommandSubmission(commandWithTrailingLf, {
+          submit: '',
+          bracketedPasteSafe: false
+        })
+      ).toBe(commandWithTrailingLf)
+      expect(
+        buildTerminalQuickCommandInput(
+          {
+            id: 'insert',
+            label: 'Insert',
+            command: commandWithTrailingLf,
+            appendEnter: false
+          },
+          false
+        )
+      ).toBe(commandWithTrailingLf)
+    })
   })
 
   it('classifies quick command actions and body text', () => {
