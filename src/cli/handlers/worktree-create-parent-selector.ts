@@ -1,6 +1,6 @@
-import { isWorkspaceKey } from '../../shared/workspace-scope'
+import { isWorkspaceKey, parseWorkspaceKey } from '../../shared/workspace-scope'
 import { getOptionalStringFlag } from '../flags'
-import { RuntimeClientError, type RuntimeClient } from '../runtime-client'
+import { RuntimeClientError, RuntimeRpcFailureError, type RuntimeClient } from '../runtime-client'
 import { getOptionalWorktreeSelector } from '../selectors'
 
 export type CreateParentSelector = {
@@ -28,6 +28,32 @@ function getWorkspaceKeyParentSelector(selector: string): string | undefined {
   return isWorkspaceKey(rawSelector) ? rawSelector : undefined
 }
 
+function toExplicitCreateParentWorktreeSelector(selector: string): string {
+  const parsed = parseWorkspaceKey(selector)
+  return parsed?.type === 'worktree' ? `id:${parsed.worktreeId}` : selector
+}
+
+async function assertResolvableExplicitCreateParent(
+  selector: string,
+  client: RuntimeClient
+): Promise<void> {
+  const parsed = parseWorkspaceKey(selector)
+  if (parsed?.type === 'folder') {
+    // Why: missing folder parents still fail at runtime with LINEAGE_PARENT_NOT_FOUND.
+    return
+  }
+  try {
+    await client.call('worktree.show', {
+      worktree: toExplicitCreateParentWorktreeSelector(selector)
+    })
+  } catch (error) {
+    if (error instanceof RuntimeRpcFailureError) {
+      throw new RuntimeClientError(error.code, error.message, error.data)
+    }
+    throw error
+  }
+}
+
 export async function resolveCreateParentSelector(
   flags: Map<string, string | boolean>,
   cwd: string,
@@ -42,6 +68,7 @@ export async function resolveCreateParentSelector(
   if (parentWorkspace) {
     // Why: create exposes one public parent flag, while the runtime still needs
     // workspace keys to preserve folder/worktree lineage accurately.
+    await assertResolvableExplicitCreateParent(parentWorkspace, client)
     return { parentWorkspace }
   }
 
@@ -51,7 +78,12 @@ export async function resolveCreateParentSelector(
     : undefined
   if (resolvedParentWorkspace) {
     // Why: active/current may resolve to a folder workspace pseudo-worktree id.
+    await assertResolvableExplicitCreateParent(resolvedParentWorkspace, client)
     return { parentWorkspace: resolvedParentWorkspace }
+  }
+
+  if (parentWorktree) {
+    await assertResolvableExplicitCreateParent(parentWorktree, client)
   }
 
   return {
