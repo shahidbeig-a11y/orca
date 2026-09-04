@@ -88,7 +88,8 @@ describe('orca worktree list host scope', () => {
     expect(printed.result.worktrees[0].hostId).toBe('ssh:box-1')
     expect(printed.result.hostScope).toMatchObject({
       hostIds: ['ssh:box-1'],
-      omittedHostIds: ['local']
+      omittedHostIds: ['local'],
+      omittedHostSelectors: [{ hostId: 'local', selector: '--host local' }]
     })
   })
 
