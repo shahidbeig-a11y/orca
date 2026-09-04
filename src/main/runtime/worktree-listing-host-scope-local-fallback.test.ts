@@ -3,9 +3,9 @@ import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import type { Repo } from '../../shared/repo-types'
 import type { RuntimeWorktreeRecord } from '../../shared/runtime-worktree-contracts'
 import {
-  buildWorktreeListCatalogResult,
-  buildWorktreeListHostScope
-} from './runtime-worktree-catalog-host-scope'
+  buildWorktreeListingHostScope,
+  buildWorktreeListingPage
+} from './worktree-listing-host-scope'
 
 const PLAIN_LOCAL_REPO: Repo = {
   id: 'repo-plain-local',
@@ -44,28 +44,31 @@ function plainLocalWorktree(path: string): RuntimeWorktreeRecord {
   }
 }
 
-describe('buildWorktreeListHostScope', () => {
+describe('buildWorktreeListingHostScope', () => {
   it('counts plain local rows under LOCAL_EXECUTION_HOST_ID', () => {
-    const repoById = new Map([[PLAIN_LOCAL_REPO.id, PLAIN_LOCAL_REPO]])
     const rows = [
       plainLocalWorktree('/tmp/plain-local/wt-a'),
       plainLocalWorktree('/tmp/plain-local/wt-b')
     ]
 
-    const hostScope = buildWorktreeListHostScope(rows, rows, repoById, new Set(), () => new Set())
+    const hostScope = buildWorktreeListingHostScope({
+      pageHostIds: rows.map((row) => row.hostId),
+      matchedHostIds: rows.map((row) => row.hostId),
+      knownHostIds: []
+    })
 
     expect(hostScope.hostIds).toEqual([LOCAL_EXECUTION_HOST_ID])
     expect(hostScope.omittedHostIds).toEqual([])
   })
 })
 
-describe('buildWorktreeListCatalogResult', () => {
+describe('buildWorktreeListingPage', () => {
   it('keeps plain local rows in hostScope.hostIds', () => {
     const rows = [plainLocalWorktree('/tmp/plain-local/wt-a')]
 
-    const result = buildWorktreeListCatalogResult(rows, 200, [PLAIN_LOCAL_REPO], () => new Set())
+    const result = buildWorktreeListingPage(rows, 200, [])
 
-    expect(result.hostScope?.hostIds).toEqual([LOCAL_EXECUTION_HOST_ID])
-    expect(result.hostScope?.omittedHostIds).toEqual([])
+    expect(result.hostScope.hostIds).toEqual([LOCAL_EXECUTION_HOST_ID])
+    expect(result.hostScope.omittedHostIds).toEqual([])
   })
 })
