@@ -77,13 +77,6 @@ export function workspaceDestinationFixtures(
   ]
 }
 
-/** Validates an explicit --parent-worktree before worktree.create. */
-export function explicitCreateParentShowFixture(
-  worktree = buildWorktree('/tmp/repo/parent', 'feature/parent', 'abc', 'repo-1')
-): OkFixture {
-  return okFixture('req_parent_show', { worktree })
-}
-
 export function queueFixtures(mock: Mock, ...fixtures: OkFixture[]): void {
   for (const fixture of fixtures) {
     mock.mockResolvedValueOnce(fixture)
