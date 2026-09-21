@@ -89,7 +89,8 @@ export function loadInitialWebSessionTabs({
           snapshot,
           requestReceivedFrame,
           runtimeId,
-          'bootstrap'
+          'bootstrap',
+          { authoritative: result.authoritative === true }
         )
       )
       const recovered = await Promise.all(
@@ -123,11 +124,14 @@ export function loadInitialWebSessionTabs({
             environmentId,
             snapshot,
             receivedFrames[index]!,
-            runtimeId
+            runtimeId,
+            { authoritative: result.authoritative === true }
           )
       )
       const decisions = applicable.map((snapshot) =>
-        decideWebSessionTabsSnapshot(snapshot, environmentId, runtimeId)
+        decideWebSessionTabsSnapshot(snapshot, environmentId, runtimeId, {
+          authoritative: result.authoritative === true
+        })
       )
       const freshSnapshots = applicable.filter((_snapshot, index) => decisions[index]!.apply)
       const initialInventoryStillCurrent =
