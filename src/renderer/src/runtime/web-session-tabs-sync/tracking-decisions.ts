@@ -10,14 +10,17 @@ import {
   isRetiredSessionTabsPublicationEpoch,
   isHeadlessMergeSessionTabsPublication,
   noteSessionTabsPublicationEpoch,
+  reviveRetiredSessionTabsPublicationEpoch,
   sameSessionTabsPublicationLineage
 } from './publisher-identity-fences'
 import {
   sessionTabsFreshnessKey,
   rememberHostTerminalTabCount,
   trackWebSessionTabsWorktree,
-  recordAcceptedWebSessionTabsEnvironment
+  recordAcceptedWebSessionTabsEnvironment,
+  type WebSessionTabsReceiptOptions
 } from './tracking'
+import { scheduleWebRetiredEpochRepair } from './retired-epoch-repair'
 import { clearWebSessionTabsTrackingForWorktree } from './tracking-lifecycle'
 import { queueAcceptedWebSessionTerminalSnapshot } from '../web-session-terminal-handle-events'
 import { shouldAutoCreateInitialTerminal } from '@/components/terminal/initial-terminal'
@@ -57,7 +60,8 @@ export function shouldApplyWebSessionTabsSnapshot(
 export function decideWebSessionTabsSnapshot(
   snapshot: RuntimeMobileSessionTabsResult,
   environmentId: string,
-  runtimeId?: string
+  runtimeId?: string,
+  options: WebSessionTabsReceiptOptions = {}
 ): WebSessionTabsSnapshotDecision {
   if (runtimeId && !acceptSessionTabsRuntimeId(environmentId, runtimeId)) {
     return WEB_SESSION_TABS_FRAME_OUTRANKED
@@ -92,7 +96,14 @@ export function decideWebSessionTabsSnapshot(
     isRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch) &&
     !currentSharesPublicationLineage
   ) {
-    return WEB_SESSION_TABS_FRAME_OUTRANKED
+    // Why not just drop: a live renderer publisher can return after a temporary headless epoch.
+    // Subscription frames stay fenced and schedule an authoritative repair; only a census we asked
+    // for may revive the epoch.
+    if (!options.authoritative) {
+      scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, snapshot.publicationEpoch)
+      return WEB_SESSION_TABS_FRAME_OUTRANKED
+    }
+    reviveRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
   }
   const replayable = replayableSessionTabsSnapshotByWorktree.get(key)
   const isExactCurrentReplay = Boolean(
