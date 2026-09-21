@@ -20,9 +20,11 @@ import {
   isRetiredSessionTabsPublicationEpoch,
   isRetiredSessionTabsRuntimeId,
   noteSessionTabsPublicationEpoch,
-  recordReceivedWebSessionTabsEnvironmentFrame
+  recordReceivedWebSessionTabsEnvironmentFrame,
+  reviveRetiredSessionTabsPublicationEpoch
 } from './publisher-identity-fences'
 import { hostSnapshotAffirmsWorktreeContents } from '../host-session-snapshot-authority'
+import { scheduleWebRetiredEpochRepair } from './retired-epoch-repair'
 
 export function isSessionTabsListAllResult(value: unknown): value is SessionTabsListAllResult {
   return (
@@ -82,12 +84,22 @@ export function untrackWebSessionTabsWorktree(environmentId: string, worktreeId:
   }
 }
 
+export type WebSessionTabsReceiptOptions = {
+  /**
+   * Marks this receipt as an authoritative `session.tabs.list` / inventory answer, which may revive
+   * a retired publication epoch. Subscription frames must omit this — only a census we just asked
+   * for can settle a returning publisher.
+   */
+  authoritative?: boolean
+}
+
 export function recordReceivedWebSessionTabsSnapshot(
   environmentId: string,
   snapshot: RuntimeMobileSessionTabsResult,
   receivedFrame: number | undefined = undefined,
   runtimeId?: string,
-  source: 'stream' | 'bootstrap' = 'stream'
+  source: 'stream' | 'bootstrap' = 'stream',
+  options: WebSessionTabsReceiptOptions = {}
 ): number {
   const frame = receivedFrame ?? nextReceivedSessionTabsFrame()
   const key = sessionTabsFreshnessKey(environmentId, snapshot.worktree)
@@ -108,8 +120,16 @@ export function recordReceivedWebSessionTabsSnapshot(
   // Retirement is a property of the lineage, not of the exact string: matching exactly here let a
   // `:headless-merge:` rebuild of a retired generation be noted as current, which then retired the
   // live one and locked it out of its own worktree.
+  //
+  // Why not just drop: an epoch is retired whenever another publisher takes over the worktree, but
+  // a live publisher can return after a temporary headless epoch. Only an authoritative census can
+  // settle that; subscription frames stay fenced and schedule repair instead.
   if (isRetiredSessionTabsPublicationEpoch(key, publicationEpoch)) {
-    return frame
+    if (!options.authoritative) {
+      scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, publicationEpoch)
+      return frame
+    }
+    reviveRetiredSessionTabsPublicationEpoch(key, publicationEpoch)
   }
   // Neither a retraction nor a "nothing published yet" placeholder takes over publishing this
   // worktree, so neither may be noted as current: doing so retires the generation that is still
@@ -191,7 +211,8 @@ export function shouldApplyRecoveredWebSessionTabsSnapshot(
   environmentId: string,
   snapshot: RuntimeMobileSessionTabsResult,
   receivedFrame: number,
-  runtimeId?: string
+  runtimeId?: string,
+  options: WebSessionTabsReceiptOptions = {}
 ): boolean {
   if (
     runtimeId &&
@@ -202,7 +223,11 @@ export function shouldApplyRecoveredWebSessionTabsSnapshot(
   }
   const key = sessionTabsFreshnessKey(environmentId, snapshot.worktree)
   if (isRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)) {
-    return false
+    if (!options.authoritative) {
+      scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, snapshot.publicationEpoch)
+      return false
+    }
+    reviveRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
   }
   if (precedesWebSessionTabsRemoval(key, receivedFrame)) {
     return false
