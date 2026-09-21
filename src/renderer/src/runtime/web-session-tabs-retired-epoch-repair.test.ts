@@ -16,10 +16,10 @@ import {
 } from './web-session-tabs-sync'
 import {
   recordReceivedWebSessionTabsSnapshot,
+  sessionTabsFreshnessKey,
   shouldApplyRecoveredWebSessionTabsSnapshot
 } from './web-session-tabs-sync/tracking'
 import { isRetiredSessionTabsPublicationEpoch } from './web-session-tabs-sync/publisher-identity-fences'
-import { sessionTabsFreshnessKey } from './web-session-tabs-sync/tracking'
 import { sessionTabsPublicationEpochHistoryByWorktree } from './web-session-tabs-sync/state'
 import {
   makeState,
@@ -48,6 +48,7 @@ function terminalTab(
   title: string,
   terminal: string
 ): RuntimeMobileSessionTabsResult['tabs'][number] {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the helper constructs a complete terminal-tab union member.
   return {
     type: 'terminal',
     id: `host-tab::${leafId}`,
@@ -109,6 +110,7 @@ describe('retired-epoch repair for a returning remote renderer publisher', () =>
       terminalTab(LEAF_B, 'Terminal', 'term_b')
     ])
     expect(decideWebSessionTabsSnapshot(snapshot, ENV).apply).toBe(true)
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the snapshot helper returns a partial store patch by contract.
     const patch = applyWebSessionTabsSnapshot(makeState(), snapshot, ENV) as Partial<WebSessionTabsSyncState>
     expect((patch.tabsByWorktree?.[WORKTREE] ?? []).map((tab) => tab.title)).toEqual(
       expect.arrayContaining(['Agent', 'Terminal'])
@@ -146,6 +148,7 @@ describe('retired-epoch repair for a returning remote renderer publisher', () =>
       true
     )
 
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the snapshot helper returns a partial store patch by contract.
     const patch = applyWebSessionTabsSnapshot(makeState(), snapshot, ENV) as Partial<WebSessionTabsSyncState>
     expect((patch.tabsByWorktree?.[WORKTREE] ?? []).map((tab) => tab.title)).toEqual(
       expect.arrayContaining(['Agent', 'Terminal'])
@@ -160,16 +163,19 @@ describe('retired-epoch repair for a returning remote renderer publisher', () =>
     expect(
       decideWebSessionTabsSnapshot(returning, ENV, undefined, { authoritative: true }).apply
     ).toBe(true)
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the harness state plus the tested patch forms a complete sync state.
     let state = {
       ...makeState(),
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the snapshot helper returns a partial store patch by contract.
       ...(applyWebSessionTabsSnapshot(makeState(), returning, ENV) as Partial<WebSessionTabsSyncState>)
     } as WebSessionTabsSyncState
     expect(terminalTitles(state)).toEqual(expect.arrayContaining(['Agent', 'Terminal']))
 
     const removed = frame(RENDERER_EPOCH, 188, [terminalTab(LEAF_A, 'Agent', 'term_a')])
     expect(decideWebSessionTabsSnapshot(removed, ENV).apply).toBe(true)
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the harness state plus the tested patch forms a complete sync state.
     state = {
-      ...state,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the snapshot helper returns a partial store patch by contract.
       ...(applyWebSessionTabsSnapshot(state, removed, ENV) as Partial<WebSessionTabsSyncState>)
     } as WebSessionTabsSyncState
     expect(terminalTitles(state)).toEqual(['Agent'])
