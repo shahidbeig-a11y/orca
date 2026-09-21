@@ -48,6 +48,10 @@ import {
   untrackWebSessionTabsWorktree,
   removeWebSessionTabsEnvironment
 } from './tracking'
+import {
+  forgetWebRetiredEpochRepairsForWorktree,
+  resetWebRetiredEpochRepairsForTests
+} from './retired-epoch-repair'
 
 const MAX_SESSION_TABS_TRACKING_GENERATIONS = 512
 let sessionTabsTrackingGenerationSequence = 0
@@ -102,6 +106,7 @@ export function acceptReplayedWebSessionTabsSnapshot(
   }
 }
 export function resetWebSessionTabsSnapshotFreshnessForTests(): void {
+  resetWebRetiredEpochRepairsForTests()
   latestSessionTabsSnapshotByWorktree.clear()
   replayableSessionTabsSnapshotByWorktree.clear()
   latestReceivedSessionTabsSnapshotByWorktree.clear()
@@ -155,6 +160,7 @@ export function clearWebSessionTabsTrackingForWorktree(
   environmentId: string,
   worktreeId: string
 ): void {
+  forgetWebRetiredEpochRepairsForWorktree(environmentId, worktreeId)
   const key = sessionTabsFreshnessKey(environmentId, worktreeId)
   latestSessionTabsSnapshotByWorktree.delete(key)
   replayableSessionTabsSnapshotByWorktree.delete(key)
