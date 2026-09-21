@@ -78,11 +78,6 @@ export function loadInitialWebSessionTabs({
         return
       }
       recordReceivedWebSessionTabsEnvironmentFrame(environmentId, requestReceivedFrame)
-      // Mirror local apply-time prune against the listAll census.
-      forgetWebRetiredEpochRepairsOutside(
-        environmentId,
-        new Set(result.snapshots.map((snapshot) => snapshot.worktree))
-      )
       const receivedFrames = result.snapshots.map((snapshot) =>
         recordReceivedWebSessionTabsSnapshot(
           environmentId,
@@ -138,6 +133,13 @@ export function loadInitialWebSessionTabs({
         latestReceivedSessionTabsFrameByEnvironment.get(environmentId) === requestReceivedFrame &&
         (latestReceivedSessionTabsInventoryFrameByEnvironment.get(environmentId) ?? 0) <=
           requestReceivedFrame
+      if (initialInventoryStillCurrent) {
+        // Mirror local apply-time prune only when this listAll census still owns the request boundary.
+        forgetWebRetiredEpochRepairsOutside(
+          environmentId,
+          new Set(result.snapshots.map((snapshot) => snapshot.worktree))
+        )
+      }
       settleHydration = applyWebSessionTabsStorePatch(
         (state) => applyWebSessionTabsSnapshots(state, freshSnapshots, environmentId),
         {
