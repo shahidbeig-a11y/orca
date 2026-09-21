@@ -8,6 +8,7 @@ import {
   recordReceivedWebSessionTabsSnapshot,
   shouldApplyRecoveredWebSessionTabsSnapshot
 } from './tracking'
+import { forgetWebRetiredEpochRepairsOutside } from './retired-epoch-repair'
 import { decideWebSessionTabsSnapshot } from './tracking-decisions'
 import {
   acceptSessionTabsRuntimeId,
@@ -77,6 +78,11 @@ export function loadInitialWebSessionTabs({
         return
       }
       recordReceivedWebSessionTabsEnvironmentFrame(environmentId, requestReceivedFrame)
+      // Mirror local apply-time prune against the listAll census.
+      forgetWebRetiredEpochRepairsOutside(
+        environmentId,
+        new Set(result.snapshots.map((snapshot) => snapshot.worktree))
+      )
       const receivedFrames = result.snapshots.map((snapshot) =>
         recordReceivedWebSessionTabsSnapshot(
           environmentId,

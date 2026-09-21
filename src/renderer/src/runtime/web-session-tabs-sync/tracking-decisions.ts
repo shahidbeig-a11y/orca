@@ -98,12 +98,11 @@ export function decideWebSessionTabsSnapshot(
   ) {
     // Why not just drop: a live renderer publisher can return after a temporary headless epoch.
     // Subscription frames stay fenced and schedule an authoritative repair; only a census we asked
-    // for may revive the epoch.
+    // for may revive the epoch — and only after the ordering gates below admit the frame.
     if (!options.authoritative) {
       scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, snapshot.publicationEpoch)
       return WEB_SESSION_TABS_FRAME_OUTRANKED
     }
-    reviveRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
   }
   const replayable = replayableSessionTabsSnapshotByWorktree.get(key)
   const isExactCurrentReplay = Boolean(
@@ -130,6 +129,10 @@ export function decideWebSessionTabsSnapshot(
   // not be noted. It still applies: rejecting it outright would drop the terminal reconciliation
   // that legitimately rides on it (host-session-snapshot-authority.ts).
   if (hostSnapshotAffirmsWorktreeContents(snapshot)) {
+    // Revive only on the accepted path and only for frames that affirm worktree contents, so a
+    // rejected/stale authoritative census never clears `retired`, and unpublished placeholders
+    // never un-fence a generation.
+    reviveRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
     noteSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
   }
   latestSessionTabsSnapshotByWorktree.set(key, {

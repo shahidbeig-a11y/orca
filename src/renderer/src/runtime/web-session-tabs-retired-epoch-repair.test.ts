@@ -51,7 +51,7 @@ function terminalTab(
   return {
     type: 'terminal',
     id: `host-tab::${leafId}`,
-    parentTabId: 'host-tab',
+    parentTabId: `host-tab::${leafId}`,
     leafId,
     title,
     isActive: true,

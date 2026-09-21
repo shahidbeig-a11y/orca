@@ -7,6 +7,7 @@ import {
   recordReceivedWebSessionTabsSnapshot,
   shouldApplyRecoveredWebSessionTabsSnapshot
 } from './tracking'
+import { forgetWebRetiredEpochRepairsOutside } from './retired-epoch-repair'
 import {
   decideWebSessionTabsSnapshot,
   WEB_SESSION_TABS_FRAME_OUTRANKED
@@ -51,6 +52,11 @@ export function handleGlobalSessionInventoryEvent({
 }: GlobalSessionInventoryEventArgs): void {
   const skipUnchangedResumeWork = awaitingVisibilityResumeInventory.value && !replayed
   awaitingVisibilityResumeInventory.value = false
+  // Mirror local apply-time prune: repair state tracks worktrees this inventory still publishes.
+  forgetWebRetiredEpochRepairsOutside(
+    environmentId,
+    new Set(event.snapshots.map((snapshot) => snapshot.worktree))
+  )
   const unchanged = event.snapshots.map((snapshot) => {
     const key = `${environmentId}:${snapshot.worktree}`
     const freshness = latestSessionTabsSnapshotByWorktree.get(key)

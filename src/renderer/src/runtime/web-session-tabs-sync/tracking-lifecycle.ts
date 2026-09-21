@@ -50,6 +50,7 @@ import {
 } from './tracking'
 import {
   forgetWebRetiredEpochRepairsForWorktree,
+  forgetWebRetiredEpochRepairsOutside,
   resetWebRetiredEpochRepairsForTests
 } from './retired-epoch-repair'
 
@@ -188,6 +189,9 @@ export function clearWebSessionTabsTrackingForEnvironment(environmentId: string)
   }
   const keyPrefix = `${trimmedEnvironmentId}:`
   advanceSessionTabsTrackingGeneration(trimmedEnvironmentId)
+  // Generation bump cancels pending timers; also drop RepairState so a replacement connection with
+  // the same IDs does not inherit an exhausted attempt budget through the decay window.
+  forgetWebRetiredEpochRepairsOutside(trimmedEnvironmentId, new Set())
   for (const key of latestSessionTabsSnapshotByWorktree.keys()) {
     if (key.startsWith(keyPrefix)) {
       latestSessionTabsSnapshotByWorktree.delete(key)

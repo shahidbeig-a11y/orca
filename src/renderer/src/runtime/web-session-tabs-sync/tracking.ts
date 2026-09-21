@@ -20,8 +20,7 @@ import {
   isRetiredSessionTabsPublicationEpoch,
   isRetiredSessionTabsRuntimeId,
   noteSessionTabsPublicationEpoch,
-  recordReceivedWebSessionTabsEnvironmentFrame,
-  reviveRetiredSessionTabsPublicationEpoch
+  recordReceivedWebSessionTabsEnvironmentFrame
 } from './publisher-identity-fences'
 import { hostSnapshotAffirmsWorktreeContents } from '../host-session-snapshot-authority'
 import { scheduleWebRetiredEpochRepair } from './retired-epoch-repair'
@@ -129,15 +128,18 @@ export function recordReceivedWebSessionTabsSnapshot(
       scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, publicationEpoch)
       return frame
     }
-    reviveRetiredSessionTabsPublicationEpoch(key, publicationEpoch)
+    // Authoritative census: admit into the receipt ledger below, but do not mutate `retired`
+    // here. Revival belongs on the accepted decide path after ordering gates pass.
   }
   // Neither a retraction nor a "nothing published yet" placeholder takes over publishing this
   // worktree, so neither may be noted as current: doing so retires the generation that is still
   // live and fences its next frame out of its own worktree.
+  // Skip noting while the epoch is still retired — fence mutations wait for decide acceptance.
   if (
     !isRetraction &&
     hostSnapshotAffirmsWorktreeContents(snapshot) &&
-    (!history || history.current !== publicationEpoch)
+    (!history || history.current !== publicationEpoch) &&
+    !isRetiredSessionTabsPublicationEpoch(key, publicationEpoch)
   ) {
     noteSessionTabsPublicationEpoch(key, publicationEpoch)
   }
@@ -227,7 +229,7 @@ export function shouldApplyRecoveredWebSessionTabsSnapshot(
       scheduleWebRetiredEpochRepair(environmentId, snapshot.worktree, snapshot.publicationEpoch)
       return false
     }
-    reviveRetiredSessionTabsPublicationEpoch(key, snapshot.publicationEpoch)
+    // Authoritative: leave `retired` alone until decide accepts after the ordering gates below.
   }
   if (precedesWebSessionTabsRemoval(key, receivedFrame)) {
     return false

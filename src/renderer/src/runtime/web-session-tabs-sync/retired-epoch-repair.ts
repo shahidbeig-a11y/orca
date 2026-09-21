@@ -138,6 +138,17 @@ export function scheduleWebRetiredEpochRepair(
       })
       .catch((error) => {
         console.warn('[web-session-tabs] retired-epoch repair refresh failed', error)
+        // Transient RPC failure: schedule another bounded attempt while this tracking generation
+        // is still current and budget remains. A successful census that leaves the epoch retired
+        // must not retry here — that confirmation is handled in `.then` above without rearming.
+        if (
+          (sessionTabsTrackingGenerationByEnvironment.get(trackingKey) ?? 0) !==
+          expectedTrackingGeneration
+        ) {
+          repairsByKey.delete(key)
+          return
+        }
+        scheduleWebRetiredEpochRepair(environmentId, worktreeId, publicationEpoch, runRepair)
       })
   }, delay)
 }
