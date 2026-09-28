@@ -4,6 +4,7 @@ import {
   getProjectHostSetupsForProject,
   isGitHubBackedRepo,
   getProjectIdForProviderIdentity,
+  importedFolderProjectIdentityMismatchMessage,
   isProjectRemoteIdentityPending
 } from './project-host-setup-projection'
 import { getProjectHostSetupWorktreeMeta } from './project-host-setup-lookup'
@@ -593,6 +594,16 @@ describe('getProjectIdForProviderIdentity', () => {
         host: 'GITHUB.ACME.TEST:8443'
       })
     ).toBe('github:github.acme.test:8443/acme/orca')
+  })
+})
+
+describe('importedFolderProjectIdentityMismatchMessage', () => {
+  it('names the folder project id and the selected --project id', () => {
+    expect(
+      importedFolderProjectIdentityMismatchMessage('github:acme/widgets', 'my-project')
+    ).toBe(
+      'Imported folder resolves to project "github:acme/widgets" which does not match "my-project"; pass --project github:acme/widgets'
+    )
   })
 })
 
