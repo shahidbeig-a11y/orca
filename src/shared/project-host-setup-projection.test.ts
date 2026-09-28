@@ -602,7 +602,7 @@ describe('importedFolderProjectIdentityMismatchMessage', () => {
     expect(
       importedFolderProjectIdentityMismatchMessage('github:acme/widgets', 'my-project')
     ).toBe(
-      'Imported folder resolves to project "github:acme/widgets" which does not match "my-project"; pass --project github:acme/widgets'
+      'Repository resolves to project "github:acme/widgets" which does not match "my-project"; pass --project github:acme/widgets'
     )
   })
 })
