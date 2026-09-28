@@ -342,7 +342,7 @@ describe('repos:add + repos:clone', () => {
         kind: 'git'
       })
     ).rejects.toThrow(
-      /Imported folder resolves to project ".+" which does not match "github:acme\\/orca"; pass --project /
+      /Imported folder resolves to project ".+" which does not match "github:acme\/orca"; pass --project /
     )
 
     expect(mockStore.removeProject).toHaveBeenCalledWith(added[0]?.id)
