@@ -599,9 +599,7 @@ describe('getProjectIdForProviderIdentity', () => {
 
 describe('importedFolderProjectIdentityMismatchMessage', () => {
   it('names the folder project id and the selected --project id', () => {
-    expect(
-      importedFolderProjectIdentityMismatchMessage('github:acme/widgets', 'my-project')
-    ).toBe(
+    expect(importedFolderProjectIdentityMismatchMessage('github:acme/widgets', 'my-project')).toBe(
       'Repository resolves to project "github:acme/widgets" which does not match "my-project"; pass --project github:acme/widgets'
     )
   })

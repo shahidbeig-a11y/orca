@@ -288,7 +288,9 @@ describe('OrcaRuntimeService', () => {
           path: tempRoot,
           kind: 'git'
         })
-      ).rejects.toThrow(/Repository resolves to project ".+" which does not match "git:git\.example\.test\/acme\/orca"; pass --project /)
+      ).rejects.toThrow(
+        /Repository resolves to project ".+" which does not match "git:git\.example\.test\/acme\/orca"; pass --project /
+      )
 
       expect(repos).toHaveLength(0)
     } finally {
@@ -332,7 +334,9 @@ describe('OrcaRuntimeService', () => {
         url: 'https://git.example.test/acme/orca.git',
         destination: '/tmp'
       })
-    ).rejects.toThrow(/Repository resolves to project ".+" which does not match "git:git\.example\.test\/acme\/orca"; pass --project /)
+    ).rejects.toThrow(
+      /Repository resolves to project ".+" which does not match "git:git\.example\.test\/acme\/orca"; pass --project /
+    )
 
     expect(repos).toHaveLength(0)
   })

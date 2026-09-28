@@ -54,9 +54,7 @@ function alignRepoWithRequestedProject(
     // Why: the selected project can exist only on the source host, so its structured identity travels with the request.
     const identity = project?.providerIdentity ?? requestedProviderIdentity
     if (!identity || getProjectIdForProviderIdentity(identity) !== projectId) {
-      throw new Error(
-        importedFolderProjectIdentityMismatchMessage(setup.projectId, projectId)
-      )
+      throw new Error(importedFolderProjectIdentityMismatchMessage(setup.projectId, projectId))
     }
     // Why: stamp the selected project's provider identity when the folder lacks upstream, so projection can merge it.
     const updated = store.updateRepo(repo.id, {
