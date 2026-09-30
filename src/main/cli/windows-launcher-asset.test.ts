@@ -13,33 +13,28 @@ describe('packaged Windows CLI launcher asset', () => {
   })
 
   it('marks the packaged child and propagates its exact exit status', () => {
-    const sourcePath = join(process.cwd(), 'native', 'windows-cli-launcher', 'OrcaCliLauncher.cs')
+    const sourcePath = join(process.cwd(), 'native', 'windows-cli-launcher', 'src', 'main.rs')
     const source = readFileSync(sourcePath, 'utf8')
 
-    // Why: the marker and command name must ride the launcher's own environment, never
-    // ProcessStartInfo's case-insensitive copy of a PATH/Path block (stablyai/orca#12046).
-    expect(source).toContain(
-      'Environment.SetEnvironmentVariable("ORCA_WINDOWS_PACKAGED_CLI_LAUNCHER", "1");'
-    )
-    expect(source).toContain(
-      'string requestedCliCommand = Environment.GetEnvironmentVariable("ORCA_CLI_COMMAND");'
-    )
-    expect(source).toContain('requestedCliCommand == "orca-ide" ? "orca-ide" : "orca"')
-    expect(source).toContain('child.WaitForExit();')
-    expect(source).toContain('return child.ExitCode;')
+    // Why: the marker and command name must ride the launcher's own environment, never an
+    // explicit child map, whose case-insensitive keys collapse PATH and Path (stablyai/orca#12046).
+    expect(source).toContain('env::set_var("ORCA_WINDOWS_PACKAGED_CLI_LAUNCHER", "1")')
+    expect(source).toContain('env::var("ORCA_CLI_COMMAND")')
+    expect(source).toContain('if requested_command == "orca-ide"')
+    expect(source).toContain('command.status()')
+    expect(source).toContain('exit(status.code().unwrap_or(1))')
   })
 
-  it('clears inherited CHROME_CRASHPAD_PIPE_NAME before launching Electron-as-Node', () => {
-    const sourcePath = join(process.cwd(), 'native', 'windows-cli-launcher', 'OrcaCliLauncher.cs')
+  it('clears an inherited Crashpad pipe before launching Electron-as-Node', () => {
+    const sourcePath = join(process.cwd(), 'native', 'windows-cli-launcher', 'src', 'main.rs')
     const source = readFileSync(sourcePath, 'utf8')
 
-    const cleanupIndex = source.indexOf(
-      'Environment.SetEnvironmentVariable("CHROME_CRASHPAD_PIPE_NAME", null);'
-    )
-    const processStartIndex = source.indexOf('using (Process child = Process.Start(startInfo))')
+    const cleanupIndex = source.indexOf('env::remove_var("CHROME_CRASHPAD_PIPE_NAME")')
+    const spawnIndex = source.indexOf('Command::new(&electron_path)')
 
-    // Why: cleanup must run on the launcher process before the child inherits its env block.
+    // Why: the child inherits our environment block, so the stale pipe must be gone before
+    // it is spawned (stablyai/orca#19792).
     expect(cleanupIndex).toBeGreaterThanOrEqual(0)
-    expect(processStartIndex).toBeGreaterThan(cleanupIndex)
+    expect(spawnIndex).toBeGreaterThan(cleanupIndex)
   })
 })
